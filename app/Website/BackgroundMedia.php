@@ -10,23 +10,13 @@ final class BackgroundMedia
     public static function rules(string $prefix): array
     {
         $rules = [
-            $prefix => ['sometimes', 'nullable', 'array:assetId,focalPoint,zoom,responsive'],
-            "{$prefix}.assetId" => ["required_with:{$prefix}", 'string', 'ulid'],
+            $prefix => ['sometimes', 'nullable', 'array:assetId,focalPoint,zoom'],
+            "{$prefix}.assetId" => ['sometimes', 'nullable', 'string', 'ulid'],
             "{$prefix}.focalPoint" => ['sometimes', 'array:x,y'],
             "{$prefix}.focalPoint.x" => ["required_with:{$prefix}.focalPoint", 'numeric', 'between:0,1'],
             "{$prefix}.focalPoint.y" => ["required_with:{$prefix}.focalPoint", 'numeric', 'between:0,1'],
             "{$prefix}.zoom" => ['sometimes', 'numeric', 'gt:0', 'lte:3'],
-            "{$prefix}.responsive" => ['sometimes', 'array:tablet,mobile'],
         ];
-        foreach (['tablet', 'mobile'] as $device) {
-            $devicePrefix = "{$prefix}.responsive.{$device}";
-            $rules[$devicePrefix] = ['sometimes', 'array:assetId,focalPoint,zoom'];
-            $rules["{$devicePrefix}.assetId"] = ['sometimes', 'string', 'ulid'];
-            $rules["{$devicePrefix}.focalPoint"] = ['sometimes', 'array:x,y'];
-            $rules["{$devicePrefix}.focalPoint.x"] = ["required_with:{$devicePrefix}.focalPoint", 'numeric', 'between:0,1'];
-            $rules["{$devicePrefix}.focalPoint.y"] = ["required_with:{$devicePrefix}.focalPoint", 'numeric', 'between:0,1'];
-            $rules["{$devicePrefix}.zoom"] = ['sometimes', 'numeric', 'gt:0', 'lte:3'];
-        }
 
         return $rules;
     }
@@ -36,12 +26,18 @@ final class BackgroundMedia
         if (! is_array($media)) {
             return;
         }
-        foreach ([null, 'tablet', 'mobile'] as $device) {
-            $framing = $device === null ? $media : ($media['responsive'][$device] ?? null);
+        if (! array_key_exists('assetId', $media)) {
+            throw ValidationException::withMessages(["{$path}.assetId" => 'Background media must contain an image asset or explicit no-image state.']);
+        }
+        foreach ([null] as $device) {
+            $framing = $media;
             if (! is_array($framing)) {
                 continue;
             }
             $fieldPath = $device === null ? $path : "{$path}.responsive.{$device}";
+            if (array_key_exists('assetId', $framing) && $framing['assetId'] === null && (isset($framing['focalPoint']) || isset($framing['zoom']))) {
+                throw ValidationException::withMessages(["{$fieldPath}.assetId" => 'An explicit no-image background cannot contain focal-point or zoom settings.']);
+            }
             if (array_key_exists('zoom', $framing) && ! is_int($framing['zoom']) && ! is_float($framing['zoom'])) {
                 throw ValidationException::withMessages(["{$fieldPath}.zoom" => 'Background image zoom must be a JSON number.']);
             }
@@ -57,18 +53,6 @@ final class BackgroundMedia
     /** @param array<string, mixed> $media @return array<string, mixed> */
     public static function normalize(array $media): array
     {
-        foreach (['tablet', 'mobile'] as $device) {
-            if (! isset($media['responsive'][$device]) || ! is_array($media['responsive'][$device])) {
-                continue;
-            }
-            if ($media['responsive'][$device] === []) {
-                unset($media['responsive'][$device]);
-            }
-        }
-        if (($media['responsive'] ?? null) === []) {
-            unset($media['responsive']);
-        }
-
         return $media;
     }
 
@@ -79,7 +63,7 @@ final class BackgroundMedia
             return [];
         }
         $ids = [];
-        foreach ([$media['assetId'] ?? null, $media['responsive']['tablet']['assetId'] ?? null, $media['responsive']['mobile']['assetId'] ?? null] as $id) {
+        foreach ([$media['assetId'] ?? null] as $id) {
             if (is_string($id) && ! in_array($id, $ids, true)) {
                 $ids[] = $id;
             }

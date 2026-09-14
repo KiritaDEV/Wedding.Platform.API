@@ -51,12 +51,12 @@ final class MediaAssetUsageChecker
             ->orderBy('website_sections.sort_order')
             ->orderBy('website_sections.id')
             ->get([
-                'website_sections.id', 'website_sections.type', 'website_sections.content', 'websites.event_id',
+                'website_sections.id', 'website_sections.type', 'website_sections.content', 'website_sections.appearance', 'websites.event_id',
                 'websites.id as website_project_id', 'websites.name as website_project_name',
             ]);
 
         foreach ($websiteSections as $section) {
-            foreach ($this->mediaReferences->extract($section->id, $section->type, $section->content) as $extracted) {
+            foreach ($this->mediaReferences->extract($section->id, $section->type, $section->content, $section->appearance) as $extracted) {
                 $resolvedAssetId = $assetEvents->get($section->event_id.':'.$extracted['mediaId']);
                 if ($resolvedAssetId === null) {
                     continue;
@@ -87,7 +87,8 @@ final class MediaAssetUsageChecker
 
         return implode(':', array_map(fn (mixed $value): string => (string) $value, [
             $record['mediaId'], $record['websiteProjectId'], $record['sectionId'], $reference['type'],
-            $reference['elementId'] ?? '', $reference['groupId'] ?? '', $reference['personId'] ?? '',
+            $reference['compositionScope'] ?? '', $reference['elementId'] ?? '', $reference['itemId'] ?? '',
+            $reference['groupId'] ?? '', $reference['personId'] ?? '',
         ]));
     }
 }

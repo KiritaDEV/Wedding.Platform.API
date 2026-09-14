@@ -29,6 +29,7 @@ use App\Http\Requests\UpdateWebsiteSectionAppearanceRequest;
 use App\Http\Requests\UpdateWebsiteSectionContentRequest;
 use App\Http\Requests\UpdateWebsiteSectionDesignDefaultsRequest;
 use App\Http\Requests\UpdateWebsiteSectionEnabledRequest;
+use App\Http\Requests\UpdateWebsiteSectionPresentationRequest;
 use App\Http\Resources\WebsiteDraftResource;
 use App\Http\Resources\WebsiteProjectResource;
 use App\Models\Event;
@@ -38,6 +39,7 @@ use App\Website\WebsiteCreationTemplateCatalog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -228,6 +230,26 @@ class WebsiteDraftController extends Controller
         $updateAppearance->handle($sectionModel, $request->validated('appearance'));
 
         return $this->draft($website);
+    }
+
+    public function updateProjectSectionPresentation(
+        UpdateWebsiteSectionPresentationRequest $request,
+        UpdateWebsiteSectionContent $updateContent,
+        UpdateWebsiteSectionAppearance $updateAppearance,
+        string $event,
+        string $website,
+        string $section,
+    ): WebsiteDraftResource {
+        $eventModel = $this->authorizedEvent($event);
+        $project = $this->website($eventModel, $website);
+        $sectionModel = $this->section($project, $section);
+        DB::transaction(function () use ($request, $updateContent, $updateAppearance, $sectionModel): void {
+            $updateContent->handle($sectionModel, $request->validated('content'), false);
+            $sectionModel->refresh();
+            $updateAppearance->handle($sectionModel, $request->validated('appearance'));
+        });
+
+        return $this->draft($project);
     }
 
     public function updateSectionDesignDefaults(

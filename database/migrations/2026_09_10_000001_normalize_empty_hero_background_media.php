@@ -12,14 +12,14 @@ return new class extends Migration
             ->orderBy('id')
             ->chunkById(250, function ($sections): void {
                 foreach ($sections as $section) {
-                    $content = json_decode($section->content, true);
-                    if (! is_array($content) || ($content['backgroundMedia'] ?? null) !== '') {
+                    $appearance = json_decode($section->appearance, true);
+                    if (! is_array($appearance) || ($appearance['shared']['backgroundMedia'] ?? null) !== '') {
                         continue;
                     }
 
-                    $content['backgroundMedia'] = null;
+                    unset($appearance['shared']['backgroundMedia']);
                     DB::table('website_sections')->where('id', $section->id)->update([
-                        'content' => json_encode($content, JSON_THROW_ON_ERROR),
+                        'appearance' => json_encode($appearance, JSON_THROW_ON_ERROR),
                         'updated_at' => now(),
                     ]);
                 }

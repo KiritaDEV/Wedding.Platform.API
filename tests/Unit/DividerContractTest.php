@@ -45,7 +45,7 @@ class DividerContractTest extends TestCase
         for ($index = 0; $index < $depth; $index++) {
             $element = ['id' => 'group-'.$index, 'type' => 'compositionGroup', 'editorName' => 'Group '.($index + 1), 'children' => [$element]];
         }
-        $content = ['childFlow' => ['elements' => [$element], 'order' => [['kind' => 'element', 'id' => $element['id']]]]];
+        $content = ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [$element], 'order' => [['kind' => 'element', 'id' => $element['id']]]]]]];
         if (! $valid) {
             $this->expectException(ValidationException::class);
         }

@@ -71,14 +71,17 @@ class WebsiteInitializationTest extends TestCase
         foreach ($website->sections as $section) {
             $definition = app(WebsiteSectionRegistry::class)->get($section->type);
             if ($section->type === 'hero') {
-                $this->assertSame(['text', 'date', 'text'], array_column($section->content['childFlow']['elements'], 'type'));
-                foreach (array_filter($section->content['childFlow']['elements'], fn (array $element) => $element['type'] === 'text') as $element) {
+                $this->assertSame(['text', 'date', 'text'], array_column($section->content['compositions']['shared']['childFlow']['elements'], 'type'));
+                foreach (array_filter($section->content['compositions']['shared']['childFlow']['elements'], fn (array $element) => $element['type'] === 'text') as $element) {
                     $this->assertSame('doc', $element['document']['type']);
                 }
             } else {
                 $this->assertSame($definition->defaultContent, $section->content);
             }
-            $this->assertSame($template->appearanceDefaultsFor($section->type), $section->appearance);
+            $expectedAppearance = in_array($section->type, ['hero', 'blank'], true)
+                ? ['shared' => $template->appearanceDefaultsFor($section->type)]
+                : $template->appearanceDefaultsFor($section->type);
+            $this->assertSame($expectedAppearance, $section->appearance);
         }
     }
 

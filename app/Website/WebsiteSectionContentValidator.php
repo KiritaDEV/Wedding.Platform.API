@@ -2,6 +2,7 @@
 
 namespace App\Website;
 
+use App\Website\Elements\CompositionGroupValidator;
 use App\Website\Elements\DividerCatalog;
 use App\Website\Elements\SectionChildFlowValidator;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,7 @@ final class WebsiteSectionContentValidator
 {
     public function __construct(
         private readonly SectionChildFlowValidator $childFlows,
+        private readonly CompositionGroupValidator $groups,
     ) {}
 
     /**
@@ -19,8 +21,12 @@ final class WebsiteSectionContentValidator
      */
     public function validate(string $sectionType, array $content, ?array $allowedElementTypes = null, ?array $allowedFontIds = null, ?array $allowedColorIds = null, ?string $templateKey = null): array
     {
-        if ($sectionType === 'hero') {
-            BackgroundMedia::assertJsonNumbers($content['backgroundMedia'] ?? null, 'content.backgroundMedia');
+        $this->assertNoAuthoredResponsiveState($content);
+        if (($content['compositions']['custom'] ?? null) === []) {
+            unset($content['compositions']['custom']);
+        }
+        if ($sectionType === 'blank' && ($content['semantic'] ?? null) !== []) {
+            throw ValidationException::withMessages(['content.semantic' => 'Blank semantic data must be an empty object.']);
         }
         $rules = $this->rulesFor($sectionType);
 
@@ -31,11 +37,25 @@ final class WebsiteSectionContentValidator
         }
 
         $validated = Validator::make(['content' => $content], $rules)->validate()['content'];
-        if ($sectionType === 'hero' && is_array($validated['backgroundMedia'] ?? null)) {
-            $validated['backgroundMedia'] = BackgroundMedia::normalize($validated['backgroundMedia']);
-        }
-        if (in_array($sectionType, ['blank', 'hero'], true) && isset($validated['childFlow'])) {
-            $validated['childFlow'] = $this->childFlows->validate($validated['childFlow'], $allowedElementTypes ?? ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup'], false);
+        if (in_array($sectionType, ['blank', 'hero'], true)) {
+            if (($validated['compositions']['custom'] ?? null) === []) {
+                unset($validated['compositions']['custom']);
+            }
+            $branches = ['shared' => $validated['compositions']['shared']];
+            foreach ($validated['compositions']['custom'] ?? [] as $viewport => $composition) {
+                $branches[$viewport] = $composition;
+            }
+            $allElements = [];
+            foreach ($branches as $branch => $composition) {
+                $flow = $this->childFlows->validate($composition['childFlow'], $allowedElementTypes ?? ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup'], false);
+                if ($branch === 'shared') {
+                    $validated['compositions']['shared']['childFlow'] = $flow;
+                } else {
+                    $validated['compositions']['custom'][$branch]['childFlow'] = $flow;
+                }
+                array_push($allElements, ...$flow['elements']);
+            }
+            $this->groups->assertUniqueTreeIds($allElements);
             $textElements = [];
             $collectText = function (array $element, string $path) use (&$collectText, &$textElements): void {
                 if (in_array(($element['type'] ?? null), ['text', 'date', 'divider'], true)) {
@@ -47,7 +67,7 @@ final class WebsiteSectionContentValidator
                     }
                 }
             };
-            foreach ($validated['childFlow']['elements'] as $index => $element) {
+            foreach ($allElements as $index => $element) {
                 $collectText($element, "{$index}");
             }
             foreach ($textElements as [$element, $path]) {
@@ -81,7 +101,7 @@ final class WebsiteSectionContentValidator
             }
         }
         array_walk_recursive($validated, function (mixed &$value, string|int $key): void {
-            if ($value === null && $key !== 'media' && $key !== 'role') {
+            if ($value === null && $key !== 'media' && $key !== 'role' && $key !== 'assetId') {
                 $value = '';
             }
         });
@@ -89,24 +109,38 @@ final class WebsiteSectionContentValidator
         return $validated;
     }
 
+    private function assertNoAuthoredResponsiveState(array $content): void
+    {
+        $visit = function (mixed $value, string $path) use (&$visit): void {
+            if (! is_array($value)) {
+                return;
+            }
+            if (array_key_exists('responsive', $value)) {
+                throw ValidationException::withMessages(["{$path}.responsive" => 'Device-specific authored properties require a custom Section composition.']);
+            }
+            foreach ($value as $key => $child) {
+                $visit($child, $path.'.'.$key);
+            }
+        };
+        $visit($content['compositions'] ?? [], 'content.compositions');
+    }
+
     /** @return array<string, list<string>>|null */
     private function rulesFor(string $sectionType): ?array
     {
         return match ($sectionType) {
             'hero' => $this->heroRules(),
-            'blank' => [
-                'content' => ['required', 'array:childFlow'],
-                'content.childFlow' => ['required', 'array'],
-            ],
+            'blank' => $this->compositionEnvelopeRules(),
             'rsvp' => $this->stringContentRules([
                 'heading' => 255,
                 'description' => 5000,
                 'buttonLabel' => 100,
             ]),
             'gallery' => [
-                'content' => ['required', 'array:heading,items'],
-                'content.heading' => ['present', 'nullable', 'string', 'max:255'],
-                'content.items' => ['present', 'array', 'size:0'],
+                'content' => ['required', 'array:semantic'],
+                'content.semantic' => ['required', 'array:heading,items'],
+                'content.semantic.heading' => ['present', 'nullable', 'string', 'max:255'],
+                'content.semantic.items' => ['present', 'array', 'size:0'],
             ],
             default => null,
         };
@@ -119,11 +153,12 @@ final class WebsiteSectionContentValidator
     private function stringContentRules(array $fields): array
     {
         $rules = [
-            'content' => ['required', 'array:'.implode(',', array_keys($fields))],
+            'content' => ['required', 'array:semantic'],
+            'content.semantic' => ['required', 'array:'.implode(',', array_keys($fields))],
         ];
 
         foreach ($fields as $field => $maximum) {
-            $rules["content.{$field}"] = ['present', 'nullable', 'string', "max:{$maximum}"];
+            $rules["content.semantic.{$field}"] = ['present', 'nullable', 'string', "max:{$maximum}"];
         }
 
         return $rules;
@@ -155,10 +190,22 @@ final class WebsiteSectionContentValidator
     /** @return array<string, list<string>> */
     private function heroRules(): array
     {
+        return [...$this->compositionEnvelopeRules(),
+            'content.semantic' => ['present', 'array']];
+    }
+
+    /** @return array<string, list<string>> */
+    private function compositionEnvelopeRules(): array
+    {
         return [
-            'content' => ['required', 'array:backgroundMedia,childFlow'],
-            'content.childFlow' => ['required', 'array'],
-            ...BackgroundMedia::rules('content.backgroundMedia'),
+            'content' => ['required', 'array:semantic,compositions'],
+            'content.semantic' => ['present', 'array'],
+            'content.compositions' => ['required', 'array:shared,custom'],
+            'content.compositions.shared' => ['required', 'array:childFlow'],
+            'content.compositions.shared.childFlow' => ['required', 'array'],
+            'content.compositions.custom' => ['sometimes', 'array:desktop,tablet,mobile'],
+            'content.compositions.custom.*' => ['required', 'array:childFlow'],
+            'content.compositions.custom.*.childFlow' => ['required', 'array'],
         ];
     }
 }

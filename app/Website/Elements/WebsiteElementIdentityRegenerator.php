@@ -6,6 +6,28 @@ use Illuminate\Support\Str;
 
 final class WebsiteElementIdentityRegenerator
 {
+    /** @param array<string, mixed> $content @return array<string, mixed> */
+    public function regenerateSectionContent(array $content): array
+    {
+        if (! isset($content['compositions']['shared'])) {
+            return $content;
+        }
+        $content['compositions']['shared'] = $this->regenerateComposition($content['compositions']['shared']);
+        foreach ($content['compositions']['custom'] ?? [] as $viewport => $composition) {
+            $content['compositions']['custom'][$viewport] = $this->regenerateComposition($composition);
+        }
+
+        return $content;
+    }
+
+    /** @param array{childFlow: array{elements: list<array<string, mixed>>, order: list<array<string, string>>}} $composition @return array{childFlow: array{elements: list<array<string, mixed>>, order: list<array<string, string>>}} */
+    public function regenerateComposition(array $composition): array
+    {
+        $composition['childFlow'] = $this->regenerateFlow($composition['childFlow']);
+
+        return $composition;
+    }
+
     /** @param array{elements: list<array<string, mixed>>, order: list<array<string, string>>} $flow @return array{elements: list<array<string, mixed>>, order: list<array<string, string>>} */
     public function regenerateFlow(array $flow): array
     {
@@ -57,6 +79,18 @@ final class WebsiteElementIdentityRegenerator
 
                 return $item;
             }, $element['items']);
+        }
+        if (($element['type'] ?? null) === 'people' && is_array($element['groups'] ?? null)) {
+            $element['groups'] = array_map(function (array $group): array {
+                $group['id'] = (string) Str::ulid();
+                $group['people'] = array_map(function (array $person): array {
+                    $person['id'] = (string) Str::ulid();
+
+                    return $person;
+                }, $group['people']);
+
+                return $group;
+            }, $element['groups']);
         }
 
         return $element;

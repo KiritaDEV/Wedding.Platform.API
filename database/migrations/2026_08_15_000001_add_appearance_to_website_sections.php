@@ -17,6 +17,9 @@ return new class extends Migration
         DB::table('website_sections')->whereNull('appearance')->update([
             'appearance' => json_encode(WebsiteSectionAppearance::DEFAULT, JSON_THROW_ON_ERROR),
         ]);
+        DB::table('website_sections')->whereIn('type', ['hero', 'blank'])->update([
+            'appearance' => json_encode(['shared' => WebsiteSectionAppearance::DEFAULT], JSON_THROW_ON_ERROR),
+        ]);
 
         if (DB::table('website_sections')->whereNull('appearance')->exists()) {
             throw new RuntimeException('Every Website Section must have appearance settings before the column becomes non-null.');

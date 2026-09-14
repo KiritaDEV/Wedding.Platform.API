@@ -32,4 +32,13 @@ class WebsiteSectionRegistryTest extends TestCase
             $this->assertSame([], array_intersect($presentationKeys, array_keys($definition->defaultContent)));
         }
     }
+
+    public function test_functional_section_defaults_have_one_semantic_owner_and_no_compositions(): void
+    {
+        $registry = new WebsiteSectionRegistry;
+        $this->assertSame(['semantic' => ['heading' => '', 'items' => []]], $registry->get('gallery')->defaultContent);
+        $this->assertSame(['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']], $registry->get('rsvp')->defaultContent);
+        $this->assertArrayNotHasKey('compositions', $registry->get('gallery')->defaultContent);
+        $this->assertArrayNotHasKey('compositions', $registry->get('rsvp')->defaultContent);
+    }
 }

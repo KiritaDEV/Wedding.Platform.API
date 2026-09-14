@@ -24,7 +24,7 @@ final class UpdateWebsiteSectionContent
     ) {}
 
     /** @param array<string, mixed> $content */
-    public function handle(WebsiteSection $section, array $content): WebsiteSection
+    public function handle(WebsiteSection $section, array $content, bool $enforceAppearancePairing = true): WebsiteSection
     {
         $website = $section->website()->firstOrFail();
         $sectionCapability = $this->capabilities->section($website->template_key, $section->type);
@@ -41,6 +41,15 @@ final class UpdateWebsiteSectionContent
             $allowedColorIds === null ? null : [...$allowedColorIds, ...$projectColorIds],
             $website->template_key,
         );
+        if ($enforceAppearancePairing && in_array($section->type, ['hero', 'blank'], true)) {
+            $contentCustom = array_keys($validated['compositions']['custom'] ?? []);
+            $appearanceCustom = array_keys($section->appearance['custom'] ?? []);
+            sort($contentCustom);
+            sort($appearanceCustom);
+            if ($contentCustom !== $appearanceCustom) {
+                throw ValidationException::withMessages(['content.compositions.custom' => 'Custom composition and appearance branches must be paired.']);
+            }
+        }
         $currentMedia = $section->content['media'] ?? null;
         $nextMedia = $validated['media'] ?? null;
         if ($currentMedia !== $nextMedia && $this->templates->get($website->template_key)?->mediaCapabilityFor($section->type) === null) {
@@ -50,15 +59,18 @@ final class UpdateWebsiteSectionContent
             ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->exists()) {
             throw ValidationException::withMessages(['content.media.assetId' => 'Select a valid image from this Event Media Library.']);
         }
-        $nextItemReferences = $this->mediaReferences->extract($section->type, $validated);
-        $currentReferences = $this->mediaReferences->extract($section->type, $section->content);
+        $nextItemReferences = $this->mediaReferences->extract($section->type, $validated, $section->appearance);
+        $currentReferences = $this->mediaReferences->extract($section->type, $section->content, $section->appearance);
         $assetIds = collect($nextItemReferences)->pluck('assetId')->unique()->values();
         if ($assetIds->isNotEmpty() && MediaAsset::query()->where('event_id', $website->event_id)->whereKey($assetIds)
             ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->count() !== $assetIds->count()) {
             throw ValidationException::withMessages(['content.groups' => 'Select valid images from this Event Media Library.']);
         }
-        if (isset($validated['childFlow']['elements'])) {
-            $validated['childFlow']['elements'] = DividerJsonShape::serializeElements($validated['childFlow']['elements']);
+        if (isset($validated['compositions']['shared']['childFlow']['elements'])) {
+            $validated['compositions']['shared']['childFlow']['elements'] = DividerJsonShape::serializeElements($validated['compositions']['shared']['childFlow']['elements']);
+            foreach ($validated['compositions']['custom'] ?? [] as $viewport => $composition) {
+                $validated['compositions']['custom'][$viewport]['childFlow']['elements'] = DividerJsonShape::serializeElements($composition['childFlow']['elements']);
+            }
         }
         $section->content = $validated;
         $section->save();

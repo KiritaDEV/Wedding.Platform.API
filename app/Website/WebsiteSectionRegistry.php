@@ -10,10 +10,10 @@ final class WebsiteSectionRegistry
     public function all(): array
     {
         return [
-            'hero' => $this->definition('hero', 'Hero', 10, ['childFlow' => ['elements' => [], 'order' => []]]),
-            'gallery' => $this->definition('gallery', 'Gallery', 70, ['heading' => '', 'items' => []]),
-            'rsvp' => $this->definition('rsvp', 'RSVP', 90, ['heading' => '', 'description' => '', 'buttonLabel' => '']),
-            'blank' => $this->definition('blank', 'Section', 100, ['childFlow' => ['elements' => [], 'order' => []]], WebsiteSectionLifecycle::UserOwnedRepeatable),
+            'hero' => $this->definition('hero', 'Hero', 10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]),
+            'gallery' => $this->definition('gallery', 'Gallery', 70, ['semantic' => ['heading' => '', 'items' => []]]),
+            'rsvp' => $this->definition('rsvp', 'RSVP', 90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]),
+            'blank' => $this->definition('blank', 'Section', 100, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]], WebsiteSectionLifecycle::UserOwnedRepeatable),
         ];
     }
 

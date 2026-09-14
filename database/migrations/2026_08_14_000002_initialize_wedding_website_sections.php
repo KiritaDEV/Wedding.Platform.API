@@ -11,9 +11,9 @@ return new class extends Migration
     public function up(): void
     {
         $definitions = [
-            'hero' => [10, ['childFlow' => ['elements' => [], 'order' => []]]],
-            'gallery' => [70, ['heading' => '', 'items' => []]],
-            'rsvp' => [90, ['heading' => '', 'description' => '', 'buttonLabel' => '']],
+            'hero' => [10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]],
+            'gallery' => [70, ['semantic' => ['heading' => '', 'items' => []]]],
+            'rsvp' => [90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]],
         ];
 
         DB::table('websites')

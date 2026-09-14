@@ -77,6 +77,9 @@ final class WebsiteElementValidator
             $this->assertMediaItemShapes($element['items'] ?? []);
             $this->assertMediaJsonTypes($element);
         }
+        if ($type === WebsiteElementType::Text) {
+            $this->restoreCanonicalEmptyTextRuns($element);
+        }
 
         $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? FourSidedSpacing::extractOuter($element)
@@ -210,6 +213,29 @@ final class WebsiteElementValidator
         }
 
         return $validated;
+    }
+
+    /** @param array<string, mixed> $element */
+    private function restoreCanonicalEmptyTextRuns(array &$element): void
+    {
+        if (! is_array($element['document']['children'] ?? null)) {
+            return;
+        }
+        foreach ($element['document']['children'] as &$block) {
+            if (! is_array($block)) {
+                continue;
+            }
+            if (! is_array($block['children'] ?? null)) {
+                continue;
+            }
+            foreach ($block['children'] as &$run) {
+                if (is_array($run) && array_key_exists('text', $run) && $run['text'] === null) {
+                    $run['text'] = '';
+                }
+            }
+            unset($run);
+        }
+        unset($block);
     }
 
     /** @param array<string, mixed> $element */

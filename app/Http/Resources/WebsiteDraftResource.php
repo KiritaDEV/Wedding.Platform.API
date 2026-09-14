@@ -48,7 +48,7 @@ class WebsiteDraftResource extends JsonResource
     private function resolvedMedia(array $sections): array
     {
         $references = app(WebsiteSectionMediaReferences::class);
-        $ids = collect($sections)->flatMap(fn (array $item) => $references->extract($item['section']->type, $item['content']))
+        $ids = collect($sections)->flatMap(fn (array $item) => $references->extract($item['section']->type, $item['content'], $item['section']->appearance))
             ->pluck('assetId')->unique()->values();
         if ($ids->isEmpty()) {
             return [];

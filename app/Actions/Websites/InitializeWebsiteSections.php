@@ -43,10 +43,10 @@ final class InitializeWebsiteSections
                     'sort_order' => $definition->defaultOrder,
                     'is_enabled' => $enableMissingSections && $definition->defaultEnabled,
                     'content' => json_encode($content, JSON_THROW_ON_ERROR),
-                    'appearance' => json_encode(
+                    'appearance' => json_encode($this->initialAppearance(
+                        $definition->key,
                         $template?->appearanceDefaultsFor($definition->key) ?? WebsiteSectionAppearance::DEFAULT,
-                        JSON_THROW_ON_ERROR,
-                    ),
+                    ), JSON_THROW_ON_ERROR),
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp,
                 ];
@@ -58,6 +58,11 @@ final class InitializeWebsiteSections
         });
     }
 
+    private function initialAppearance(string $sectionType, array $appearance): array
+    {
+        return in_array($sectionType, ['hero', 'blank'], true) ? ['shared' => $appearance] : $appearance;
+    }
+
     /** @return array<string, mixed> */
     private function initialHeroContent(string $eventName): array
     {
@@ -65,13 +70,13 @@ final class InitializeWebsiteSections
         $dateId = (string) Str::ulid();
         $supportingId = (string) Str::ulid();
 
-        return ['childFlow' => [
+        return ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => [
             'elements' => [
                 ['id' => $headlineId, 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => $eventName]]]]], 'appearance' => ['fontSize' => 'xl', 'fontWeight' => 700, 'alignment' => 'center']],
                 ['id' => $dateId, 'type' => 'date', 'editorName' => 'Date 1', 'appearance' => ['textStyle' => 'subheading', 'alignment' => 'center']],
                 ['id' => $supportingId, 'type' => 'text', 'editorName' => 'Text 2', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Together with their families']]]]], 'appearance' => ['alignment' => 'center']],
             ],
             'order' => array_map(fn (string $id): array => ['kind' => 'element', 'id' => $id], [$headlineId, $dateId, $supportingId]),
-        ]];
+        ]]]];
     }
 }

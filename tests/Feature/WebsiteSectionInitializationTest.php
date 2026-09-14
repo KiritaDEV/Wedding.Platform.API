@@ -38,9 +38,9 @@ class WebsiteSectionInitializationTest extends TestCase
 
         foreach ($sections as $section) {
             if ($section->type === 'hero') {
-                $this->assertCount(3, $section->content['childFlow']['elements']);
-                $this->assertSame(['text', 'date', 'text'], array_column($section->content['childFlow']['elements'], 'type'));
-                $this->assertSame(array_column($section->content['childFlow']['elements'], 'id'), array_column($section->content['childFlow']['order'], 'id'));
+                $this->assertCount(3, $section->content['compositions']['shared']['childFlow']['elements']);
+                $this->assertSame(['text', 'date', 'text'], array_column($section->content['compositions']['shared']['childFlow']['elements'], 'type'));
+                $this->assertSame(array_column($section->content['compositions']['shared']['childFlow']['elements'], 'id'), array_column($section->content['compositions']['shared']['childFlow']['order'], 'id'));
 
                 continue;
             }
@@ -55,7 +55,7 @@ class WebsiteSectionInitializationTest extends TestCase
         $initializer->handle($website);
         $hero = $website->sections()->where('type', 'hero')->sole();
         $hero->update([
-            'content' => ['childFlow' => ['elements' => [], 'order' => []]],
+            'content' => ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]],
             'is_enabled' => false,
             'sort_order' => 7,
         ]);
@@ -68,7 +68,7 @@ class WebsiteSectionInitializationTest extends TestCase
 
         $this->assertDatabaseCount('website_sections', 4);
         $this->assertSame(0, $website->sections()->where('type', 'faq')->count());
-        $this->assertSame(['childFlow' => ['elements' => [], 'order' => []]], $hero->refresh()->content);
+        $this->assertSame(['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]], $hero->refresh()->content);
         $this->assertFalse($hero->is_enabled);
         $this->assertSame(7, $hero->sort_order);
         $this->assertSame(['body' => 'Keep me'], $legacy->refresh()->content);

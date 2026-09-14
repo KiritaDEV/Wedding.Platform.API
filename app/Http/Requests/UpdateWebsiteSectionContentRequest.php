@@ -60,10 +60,22 @@ class UpdateWebsiteSectionContentRequest extends FormRequest
                     }
                 }
             };
-            $elements = $body->content->childFlow->elements ?? null;
-            if (is_array($elements)) {
-                foreach ($elements as $index => $element) {
-                    $visit($element, 'content.childFlow.elements.'.$index);
+            $compositions = $body->content->compositions ?? null;
+            if ($compositions instanceof \stdClass) {
+                $branches = ['shared' => $compositions->shared ?? null];
+                foreach (['desktop', 'tablet', 'mobile'] as $viewport) {
+                    if (($compositions->custom ?? null) instanceof \stdClass && property_exists($compositions->custom, $viewport)) {
+                        $branches[$viewport] = $compositions->custom->{$viewport};
+                    }
+                }
+                foreach ($branches as $branch => $composition) {
+                    $elements = $composition->childFlow->elements ?? null;
+                    if (! is_array($elements)) {
+                        continue;
+                    }
+                    foreach ($elements as $index => $element) {
+                        $visit($element, 'content.compositions.'.$branch.'.childFlow.elements.'.$index);
+                    }
                 }
             }
         }];

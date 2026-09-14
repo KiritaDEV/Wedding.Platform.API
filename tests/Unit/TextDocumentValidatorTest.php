@@ -131,6 +131,17 @@ class TextDocumentValidatorTest extends TestCase
         $this->assertSame($element, (new WebsiteElementValidator(new CompositionGroupValidator))->validate($element));
     }
 
+    public function test_request_middleware_null_for_a_canonical_empty_run_is_restored(): void
+    {
+        $element = ['id' => 'text-1', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [
+            ['type' => 'paragraph', 'children' => [['text' => null]]],
+        ]]];
+
+        $validated = (new WebsiteElementValidator(new CompositionGroupValidator))->validate($element);
+
+        $this->assertSame('', $validated['document']['children'][0]['children'][0]['text']);
+    }
+
     #[DataProvider('invalidCanonicalRunProvider')]
     public function test_rejects_noncanonical_runs_and_marks(mixed $run): void
     {

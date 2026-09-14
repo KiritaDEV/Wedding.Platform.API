@@ -34,7 +34,7 @@ final class CreateWebsiteSection
                 'sort_order' => $sortOrder,
                 'is_enabled' => true,
                 'content' => $definition->defaultContent,
-                'appearance' => $this->templates->get($locked->template_key)?->appearanceDefaultsFor($type) ?? WebsiteSectionAppearance::DEFAULT,
+                'appearance' => ['shared' => $this->templates->get($locked->template_key)?->appearanceDefaultsFor($type) ?? WebsiteSectionAppearance::DEFAULT],
             ]);
         });
     }

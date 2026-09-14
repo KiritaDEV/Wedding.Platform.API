@@ -54,8 +54,9 @@ final class UpdateWebsiteSectionDesignDefaults
             throw ValidationException::withMessages(['designDefaults' => $exception->getMessage()]);
         }
 
-        $appearance = is_array($section->appearance) ? $section->appearance : [];
-        $existing = is_array($appearance['designDefaults'] ?? null) ? $appearance['designDefaults'] : [];
+        $storedAppearance = is_array($section->appearance) ? $section->appearance : [];
+        $appearance = in_array($section->type, ['hero', 'blank'], true) ? ($storedAppearance['shared'] ?? []) : $storedAppearance;
+        $existing = is_array($storedAppearance['designDefaults'] ?? null) ? $storedAppearance['designDefaults'] : [];
         $presentationId = is_string($appearance['presentation'] ?? null)
             ? $appearance['presentation']
             : $sectionCapability->defaultPresentation;
@@ -72,8 +73,8 @@ final class UpdateWebsiteSectionDesignDefaults
             }
         }
 
-        $appearance['designDefaults'] = (object) $designDefaults;
-        $section->appearance = $appearance;
+        $storedAppearance['designDefaults'] = (object) $designDefaults;
+        $section->appearance = $storedAppearance;
         $section->save();
 
         return $section;

@@ -2,13 +2,16 @@
 
 namespace App\Actions\Websites;
 
+use App\Models\MediaAsset;
 use App\Models\WebsiteSection;
+use App\Website\BackgroundMedia;
 use App\Website\Capabilities\AppearanceControlCapability;
 use App\Website\Capabilities\AppearanceControlType;
 use App\Website\Capabilities\SectionCapability;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\ProjectColorLibrary;
 use App\Website\WebsiteSectionAppearance;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateWebsiteSectionAppearance
@@ -18,7 +21,59 @@ final class UpdateWebsiteSectionAppearance
     public function __construct(private readonly WebsiteCapabilityResolver $capabilities) {}
 
     /** @param array<string, mixed> $appearance */
-    public function handle(WebsiteSection $section, array $appearance): WebsiteSection
+    public function handle(WebsiteSection $section, array $appearance, bool $persist = true): WebsiteSection
+    {
+        if (in_array($section->type, ['hero', 'blank'], true) && ! array_key_exists('shared', $appearance)) {
+            throw ValidationException::withMessages(['appearance' => 'Composition Sections require the canonical shared/custom appearance envelope.']);
+        }
+        if (in_array($section->type, ['hero', 'blank'], true) && array_key_exists('shared', $appearance)) {
+            if (array_diff(array_keys($appearance), ['shared', 'custom', 'designDefaults']) !== [] || ! is_array($appearance['shared']) || (isset($appearance['custom']) && ! is_array($appearance['custom']))) {
+                throw ValidationException::withMessages(['appearance' => 'Provide the canonical shared/custom Section appearance envelope.']);
+            }
+            $contentCustom = array_keys($section->content['compositions']['custom'] ?? []);
+            $appearanceCustom = array_keys($appearance['custom'] ?? []);
+            sort($contentCustom);
+            sort($appearanceCustom);
+            if ($contentCustom !== $appearanceCustom || array_diff($appearanceCustom, ['desktop', 'tablet', 'mobile']) !== []) {
+                throw ValidationException::withMessages(['appearance.custom' => 'Custom composition and appearance branches must be paired.']);
+            }
+            $normalized = ['shared' => $this->normalizeBranch($section, $appearance['shared'])];
+            foreach ($appearance['custom'] ?? [] as $viewport => $branch) {
+                if (! is_array($branch)) {
+                    throw ValidationException::withMessages(["appearance.custom.{$viewport}" => 'Custom appearance must be a complete object.']);
+                }
+                $normalized['custom'][$viewport] = $this->normalizeBranch($section, $branch);
+            }
+            $assetIds = collect([$normalized['shared'], ...array_values($normalized['custom'] ?? [])])
+                ->flatMap(fn (array $branch): array => BackgroundMedia::assetIds($branch['backgroundMedia'] ?? null))->unique()->values();
+            if ($assetIds->isNotEmpty() && MediaAsset::query()->where('event_id', $section->website->event_id)->whereKey($assetIds)
+                ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->count() !== $assetIds->count()) {
+                throw ValidationException::withMessages(['appearance.backgroundMedia.assetId' => 'Select valid images from this Event Media Library.']);
+            }
+            if (isset($appearance['designDefaults'])) {
+                $normalized['designDefaults'] = $appearance['designDefaults'];
+            }
+            $section->appearance = $normalized;
+            if ($persist) {
+                $section->save();
+            }
+
+            return $section;
+        }
+
+        return $this->applyBranch($section, $appearance, $persist);
+    }
+
+    private function normalizeBranch(WebsiteSection $section, array $appearance): array
+    {
+        $copy = clone $section;
+        $copy->appearance = $appearance;
+        $this->applyBranch($copy, $appearance, false);
+
+        return $copy->appearance;
+    }
+
+    private function applyBranch(WebsiteSection $section, array $appearance, bool $persist): WebsiteSection
     {
         $storedDesignDefaults = $section->appearance['designDefaults'] ?? null;
         $section->loadMissing('website');
@@ -64,8 +119,7 @@ final class UpdateWebsiteSectionAppearance
             $expectedKeys[] = 'overlayStrength';
         }
         if (array_key_exists('responsive', $appearance)) {
-            $this->validateResponsiveOverrides($templateKey, $section->type, $activePresentation, $appearance['responsive']);
-            $expectedKeys[] = 'responsive';
+            throw ValidationException::withMessages(['appearance.responsive' => 'Device-specific authored properties require a custom Section appearance.']);
         }
         if (array_key_exists('decorativeAppearance', $appearance)) {
             if (isset($appearance['decorativeAppearance']['background']['customColor']) && is_string($appearance['decorativeAppearance']['background']['customColor'])) {
@@ -93,6 +147,17 @@ final class UpdateWebsiteSectionAppearance
             } else {
                 $expectedKeys[] = 'backgroundImageOpacity';
             }
+        }
+        if (array_key_exists('backgroundMedia', $appearance)) {
+            if ($section->type !== 'hero') {
+                throw ValidationException::withMessages(['appearance.backgroundMedia' => 'Background media is supported only by Hero Sections.']);
+            }
+            BackgroundMedia::assertJsonNumbers($appearance['backgroundMedia'], 'appearance.backgroundMedia');
+            Validator::make(['appearance' => $appearance], BackgroundMedia::rules('appearance.backgroundMedia'))->validate();
+            if (is_array($appearance['backgroundMedia'])) {
+                $appearance['backgroundMedia'] = BackgroundMedia::normalize($appearance['backgroundMedia']);
+            }
+            $expectedKeys[] = 'backgroundMedia';
         }
         if (array_key_exists('contentPosition', $appearance)) {
             if ($section->type !== 'hero' || ! $this->validHeroContentPosition($appearance['contentPosition'])) {
@@ -167,7 +232,9 @@ final class UpdateWebsiteSectionAppearance
                 : $storedDesignDefaults;
         }
         $section->appearance = $appearance;
-        $section->save();
+        if ($persist) {
+            $section->save();
+        }
 
         return $section;
     }

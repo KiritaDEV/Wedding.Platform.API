@@ -15,14 +15,19 @@ return new class extends Migration
                 foreach ($sections as $section) {
                     $content = $this->decode($section->content);
                     $appearance = $this->decode($section->appearance);
+                    $backgroundMedia = $content['backgroundMedia'] ?? $content['media'] ?? null;
 
-                    if (! isset($content['childFlow']) || ! is_array($content['childFlow'])) {
+                    if (isset($content['compositions']['shared']['childFlow'])) {
+                        // Already uses the canonical device-neutral composition envelope.
+                    } elseif (! isset($content['childFlow']) || ! is_array($content['childFlow'])) {
                         $content = $this->composableContent($content);
                     } else {
                         unset($content['headline'], $content['subheadline'], $content['media']);
+                        $content = ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => $content['childFlow']]]];
                     }
+                    $content['semantic'] = [];
 
-                    $appearance = $this->heroAppearance($appearance);
+                    $appearance = ['shared' => $this->heroAppearance($appearance['shared'] ?? $appearance, $backgroundMedia)];
 
                     DB::table('website_sections')->where('id', $section->id)->update([
                         'content' => json_encode($content, JSON_THROW_ON_ERROR),
@@ -47,7 +52,7 @@ return new class extends Migration
         $headline = is_string($legacy['headline'] ?? null) ? $legacy['headline'] : '';
         $supporting = is_string($legacy['subheadline'] ?? null) ? $legacy['subheadline'] : '';
 
-        $content = [
+        $content = ['semantic' => [], 'compositions' => ['shared' => [
             'childFlow' => [
                 'elements' => [
                     ['id' => $headlineId, 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => $headline]]]]], 'appearance' => ['fontSize' => 'xl', 'fontWeight' => 700, 'alignment' => 'center']],
@@ -56,24 +61,23 @@ return new class extends Migration
                 ],
                 'order' => array_map(fn (string $id): array => ['kind' => 'element', 'id' => $id], [$headlineId, $dateId, $supportingId]),
             ],
-        ];
-
-        if (is_array($legacy['media'] ?? null)) {
-            $content['backgroundMedia'] = $legacy['media'];
-        }
+        ]]];
 
         return $content;
     }
 
     /** @param array<string, mixed> $appearance @return array<string, mixed> */
-    private function heroAppearance(array $appearance): array
+    private function heroAppearance(array $appearance, mixed $backgroundMedia): array
     {
         $presentation = $appearance['presentation'] ?? null;
-        $allowed = ['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis', 'decorativeAppearance', 'designDefaults', 'backgroundImageOpacity', 'height'];
+        $allowed = ['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis', 'decorativeAppearance', 'designDefaults', 'backgroundImageOpacity', 'height', 'backgroundMedia'];
         $appearance = array_intersect_key($appearance, array_flip($allowed));
 
         if ($presentation === 'immersive') {
             $appearance['height'] = 'screen';
+        }
+        if (is_array($backgroundMedia)) {
+            $appearance['backgroundMedia'] = $backgroundMedia;
         }
 
         return $appearance;

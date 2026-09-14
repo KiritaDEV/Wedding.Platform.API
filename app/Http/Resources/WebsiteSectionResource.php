@@ -27,9 +27,14 @@ class WebsiteSectionResource extends JsonResource
             ? app(WebsiteTemplateRegistry::class)->get($this->website->template_key)
             : null;
 
-        $appearance = $this->appearance;
-        $designDefaults = is_array($appearance['designDefaults'] ?? null) ? $appearance['designDefaults'] : [];
-        unset($appearance['designDefaults']);
+        $appearanceEnvelope = in_array($this->type, ['hero', 'blank'], true) ? $this->appearance : null;
+        $appearance = $appearanceEnvelope['shared'] ?? $this->appearance;
+        $designDefaults = is_array(($appearanceEnvelope ?? $appearance)['designDefaults'] ?? null) ? ($appearanceEnvelope ?? $appearance)['designDefaults'] : [];
+        if ($appearanceEnvelope !== null) {
+            unset($appearanceEnvelope['designDefaults']);
+        } else {
+            unset($appearance['designDefaults']);
+        }
         if ($template?->presentationFallbackFor($this->type, $appearance['presentation'] ?? '') !== null) {
             $appearance = $template->normalizeSectionAppearance($this->type, $appearance);
         }
@@ -76,6 +81,13 @@ class WebsiteSectionResource extends JsonResource
             }
         }
 
+        if ($appearanceEnvelope !== null) {
+            $appearanceEnvelope['shared'] = $appearance;
+            foreach ($appearanceEnvelope['custom'] ?? [] as $viewport => $branch) {
+                $appearanceEnvelope['custom'][$viewport] = $this->normalizeAppearanceBranch($branch, $template);
+            }
+        }
+
         return [
             'id' => $this->id,
             'type' => $this->type,
@@ -84,7 +96,7 @@ class WebsiteSectionResource extends JsonResource
             'sortOrder' => $this->sort_order,
             'isEnabled' => $this->is_enabled,
             'content' => $this->serializedContent(),
-            'appearance' => $appearance,
+            'appearance' => $appearanceEnvelope ?? $appearance,
             'designDefaults' => (object) $designDefaults,
             'resolvedDesignContext' => $resolvedContext,
             'appearanceOptions' => $template?->appearanceOptionsFor($this->type),
@@ -94,13 +106,40 @@ class WebsiteSectionResource extends JsonResource
         ];
     }
 
+    private function normalizeAppearanceBranch(array $appearance, mixed $template): array
+    {
+        unset($appearance['designDefaults']);
+        if ($template?->presentationFallbackFor($this->type, $appearance['presentation'] ?? '') !== null) {
+            $appearance = $template->normalizeSectionAppearance($this->type, $appearance);
+        }
+        if ($this->type !== 'blank') {
+            return $appearance;
+        }
+        $kept = array_intersect_key($appearance, array_flip(['backgroundTreatment', 'decorativeAppearance', 'innerSpacing', 'responsive']));
+        $result = ['headingAlignment' => 'inherit', 'bodyAlignment' => 'inherit', 'backgroundTreatment' => in_array($kept['backgroundTreatment'] ?? null, ['inherit', 'custom'], true) ? $kept['backgroundTreatment'] : 'inherit', 'emphasis' => 'inherit'];
+        foreach (['decorativeAppearance', 'innerSpacing', 'responsive'] as $key) {
+            if (is_array($kept[$key] ?? null) && $kept[$key] !== []) {
+                $result[$key] = $kept[$key];
+            }
+        }
+
+        return $result;
+    }
+
     /** @return array<string, mixed> */
     private function serializedContent(): array
     {
         $content = $this->normalizedContent;
 
-        if (isset($content['childFlow']['elements'])) {
-            $content['childFlow']['elements'] = DividerJsonShape::serializeElements($content['childFlow']['elements']);
+        if (in_array($this->type, ['hero', 'blank'], true) && ($content['semantic'] ?? null) === []) {
+            $content['semantic'] = (object) [];
+        }
+
+        if (isset($content['compositions']['shared']['childFlow']['elements'])) {
+            $content['compositions']['shared']['childFlow']['elements'] = DividerJsonShape::serializeElements($content['compositions']['shared']['childFlow']['elements']);
+            foreach ($content['compositions']['custom'] ?? [] as $viewport => $composition) {
+                $content['compositions']['custom'][$viewport]['childFlow']['elements'] = DividerJsonShape::serializeElements($composition['childFlow']['elements']);
+            }
         }
 
         return $content;

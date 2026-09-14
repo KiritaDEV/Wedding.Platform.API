@@ -39,7 +39,7 @@ class SectionChildFlowValidatorTest extends TestCase
 
     public function test_hero_accepts_the_same_empty_generic_only_flow_as_blank(): void
     {
-        $content = ['childFlow' => ['elements' => [], 'order' => []]];
+        $content = $this->compositionContent(['elements' => [], 'order' => []]);
 
         $this->assertSame($content, app(WebsiteSectionContentValidator::class)->validate('hero', $content));
     }
@@ -47,18 +47,18 @@ class SectionChildFlowValidatorTest extends TestCase
     public function test_blank_accepts_empty_and_ordered_generic_only_flows(): void
     {
         $validator = app(WebsiteSectionContentValidator::class);
-        $empty = ['childFlow' => ['elements' => [], 'order' => []]];
+        $empty = $this->compositionContent(['elements' => [], 'order' => []]);
         $this->assertSame($empty, $validator->validate('blank', $empty, ['text']));
 
         $element = ['id' => 'a', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Hello']]]]]];
-        $ordered = ['childFlow' => ['elements' => [$element], 'order' => [['kind' => 'element', 'id' => 'a']]]];
+        $ordered = $this->compositionContent(['elements' => [$element], 'order' => [['kind' => 'element', 'id' => 'a']]]);
         $this->assertSame($ordered, $validator->validate('blank', $ordered, ['text']));
     }
 
     public function test_hero_and_blank_validate_inline_text_color_references(): void
     {
         $element = ['id' => 'a', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => '&', 'colorId' => 'green']]]]]];
-        $content = ['childFlow' => ['elements' => [$element], 'order' => [['kind' => 'element', 'id' => 'a']]]];
+        $content = $this->compositionContent(['elements' => [$element], 'order' => [['kind' => 'element', 'id' => 'a']]]);
         foreach (['hero', 'blank'] as $sectionType) {
             $this->assertSame($content, app(WebsiteSectionContentValidator::class)->validate($sectionType, $content, ['text'], null, ['green']));
         }
@@ -72,10 +72,10 @@ class SectionChildFlowValidatorTest extends TestCase
         $date = ['id' => 'date-1', 'type' => 'date', 'editorName' => 'Ceremony date', 'isHidden' => true];
         $nestedDate = ['id' => 'date-2', 'type' => 'date', 'editorName' => 'Nested date'];
         $group = ['id' => 'group-1', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [$nestedDate]];
-        $content = ['childFlow' => ['elements' => [$date, $group], 'order' => [
+        $content = $this->compositionContent(['elements' => [$date, $group], 'order' => [
             ['kind' => 'element', 'id' => 'date-1'],
             ['kind' => 'element', 'id' => 'group-1'],
-        ]]];
+        ]]);
 
         $this->assertSame($content, app(WebsiteSectionContentValidator::class)->validate(
             'blank',
@@ -92,7 +92,7 @@ class SectionChildFlowValidatorTest extends TestCase
             ['elements' => [['id' => 'a', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Hello']]]]]]], 'order' => [['kind' => 'element', 'id' => 'missing']]],
         ] as $flow) {
             try {
-                $validator->validate('blank', ['childFlow' => $flow], ['text']);
+                $validator->validate('blank', $this->compositionContent($flow), ['text']);
                 $this->fail('Invalid Blank flow was accepted.');
             } catch (ValidationException) {
                 $this->addToAssertionCount(1);
@@ -110,5 +110,10 @@ class SectionChildFlowValidatorTest extends TestCase
                 'order' => [['kind' => 'element', 'id' => 'a'], ['kind' => 'specialized', 'key' => 'content']],
             ],
         ];
+    }
+
+    private function compositionContent(array $flow): array
+    {
+        return ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => $flow]]];
     }
 }

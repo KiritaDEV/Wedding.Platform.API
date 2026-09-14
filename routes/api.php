@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/events/{event}/websites/{website}/sections/{section}/editor-name', [WebsiteDraftController::class, 'renameProjectSection']);
     Route::put('/events/{event}/websites/{website}/sections/{section}/enabled', [WebsiteDraftController::class, 'updateProjectSectionEnabled']);
     Route::put('/events/{event}/websites/{website}/sections/{section}/appearance', [WebsiteDraftController::class, 'updateProjectSectionAppearance']);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/presentation', [WebsiteDraftController::class, 'updateProjectSectionPresentation']);
     Route::put('/events/{event}/websites/{website}/sections/{section}/design-defaults', [WebsiteDraftController::class, 'updateProjectSectionDesignDefaults']);
     Route::put('/events/{event}/websites/{website}/sections/{section}', [WebsiteDraftController::class, 'updateProjectSection']);
 });

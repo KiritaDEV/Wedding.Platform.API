@@ -22,8 +22,7 @@ final class DuplicateWebsiteSection
 
         return DB::transaction(function () use ($source): WebsiteSection {
             $website = Website::query()->lockForUpdate()->findOrFail($source->website_id);
-            $content = $source->content;
-            $content['childFlow'] = $this->identities->regenerateFlow($content['childFlow']);
+            $content = $this->identities->regenerateSectionContent($source->content);
             $website->sections()->where('sort_order', '>', $source->sort_order)->increment('sort_order', 10);
             $duplicate = $website->sections()->create([
                 'type' => $source->type,

@@ -51,7 +51,7 @@ class CompositionGroupValidatorTest extends TestCase
         $id = '01M00000000000000000000000';
         foreach (['50-50', '60-40', '40-60', 'thirds'] as $division) {
             $group = ['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [],
-                'backgroundMedia' => ['assetId' => $id, 'focalPoint' => ['x' => .2, 'y' => .8], 'zoom' => 1.7, 'responsive' => ['tablet' => ['assetId' => '01M00000000000000000000001', 'zoom' => .7], 'mobile' => ['assetId' => '01M00000000000000000000002', 'focalPoint' => ['x' => .8, 'y' => .3], 'zoom' => .4]]],
+                'backgroundMedia' => ['assetId' => $id, 'focalPoint' => ['x' => .2, 'y' => .8], 'zoom' => 1.7],
                 'appearance' => ['backgroundImageOpacity' => 45], 'layout' => ['direction' => 'horizontal', 'division' => $division],
             ];
             $this->assertSame($group, $this->validator->validate($group));
@@ -84,13 +84,29 @@ class CompositionGroupValidatorTest extends TestCase
         }
     }
 
-    public function test_group_normalizes_empty_responsive_objects(): void
+    public function test_group_rejects_obsolete_empty_responsive_objects(): void
     {
-        $group = $this->validator->validate(['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [], 'backgroundMedia' => [
+        $this->expectException(ValidationException::class);
+        $this->validator->validate(['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [], 'backgroundMedia' => [
             'assetId' => '01M00000000000000000000000', 'responsive' => ['tablet' => [], 'mobile' => []],
         ]]);
+    }
 
-        $this->assertSame(['assetId' => '01M00000000000000000000000'], $group['backgroundMedia']);
+    public function test_owner_explicit_none_is_preserved_and_cannot_have_framing(): void
+    {
+        $background = ['assetId' => null];
+        $group = $this->validator->validate([
+            'id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [],
+            'backgroundMedia' => $background,
+        ], fn (array $child): array => $child);
+
+        $this->assertSame($background, $group['backgroundMedia']);
+
+        $this->expectException(ValidationException::class);
+        $this->validator->validate([
+            'id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [],
+            'backgroundMedia' => ['assetId' => null, 'zoom' => 1.5],
+        ], fn (array $child): array => $child);
     }
 
     public function test_group_and_nested_generic_children_preserve_hidden_state(): void
