@@ -8,4 +8,5 @@ enum ContainerColorRole: string
     case BodyColor = 'bodyColor';
     case AccentColor = 'accentColor';
     case BackgroundColor = 'backgroundColor';
+    case FrameColor = 'frameColor';
 }

@@ -323,7 +323,7 @@ final readonly class WebsiteTemplateDefinition
         return [];
     }
 
-    /** @return array{presentation: string, frameStyle?: string}|null */
+    /** @return array{presentation: string}|null */
     public function presentationFallbackFor(string $sectionType, string $presentation): ?array
     {
         return $this->sectionPresentationFallbacks[$sectionType][$presentation] ?? null;
@@ -335,7 +335,6 @@ final readonly class WebsiteTemplateDefinition
         return [
             'mediaPlacement' => 'mediaPlacements',
             'mediaSize' => 'mediaSizes',
-            'frameStyle' => 'frameStyles',
             'cornerStyle' => 'cornerStyles',
             'shadowStyle' => 'shadowStyles',
             'foregroundColor' => 'foregroundColors',

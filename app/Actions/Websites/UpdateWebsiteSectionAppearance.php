@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 final class UpdateWebsiteSectionAppearance
 {
-    private const ROOT_OPTION_CONTROLS = ['mediaPlacement', 'mediaSize', 'frameStyle', 'cornerStyle', 'shadowStyle', 'foregroundColor', 'mediaContentGap'];
+    private const ROOT_OPTION_CONTROLS = ['mediaPlacement', 'mediaSize', 'cornerStyle', 'shadowStyle', 'foregroundColor', 'mediaContentGap'];
 
     public function __construct(private readonly WebsiteCapabilityResolver $capabilities) {}
 
@@ -242,7 +242,7 @@ final class UpdateWebsiteSectionAppearance
     /** @param array<string, mixed> $designSettings */
     private function validateSectionDecorativeAppearance(SectionCapability $capability, string $sectionType, mixed $value, array $designSettings): void
     {
-        if (! in_array($sectionType, ['blank', 'hero'], true) || $capability->decorativeAppearance === null || ! is_array($value)) {
+        if (! in_array($sectionType, ['hero', 'gallery', 'rsvp', 'blank'], true) || $capability->decorativeAppearance === null || ! is_array($value)) {
             throw ValidationException::withMessages(['appearance.decorativeAppearance' => 'Decorative appearance is not supported by this Section.']);
         }
         $rootKeys = array_keys($value);
@@ -277,11 +277,24 @@ final class UpdateWebsiteSectionAppearance
             }
         }
         if (array_key_exists('frame', $value)) {
-            if (! is_array($value['frame']) || array_diff(array_keys($value['frame']), ['style']) !== []) {
+            if (! is_array($value['frame']) || array_diff(array_keys($value['frame']), ['style', 'size', 'strength', 'colorId']) !== []) {
                 throw ValidationException::withMessages(['appearance.decorativeAppearance.frame' => 'Decorative frame contains unsupported properties.']);
             }
             if (array_key_exists('style', $value['frame']) && (! is_string($value['frame']['style']) || ! in_array($value['frame']['style'], $capability->decorativeAppearance->frames, true))) {
                 throw ValidationException::withMessages(['appearance.decorativeAppearance.frame.style' => 'The selected frame is not supported by this Template.']);
+            }
+            if (array_key_exists('size', $value['frame']) && (! is_int($value['frame']['size']) || $value['frame']['size'] < 50 || $value['frame']['size'] > 200)) {
+                throw ValidationException::withMessages(['appearance.decorativeAppearance.frame.size' => 'Frame size must be an integer between 50 and 200.']);
+            }
+            if (array_key_exists('strength', $value['frame']) && (! is_int($value['frame']['strength']) || $value['frame']['strength'] < 0 || $value['frame']['strength'] > 100)) {
+                throw ValidationException::withMessages(['appearance.decorativeAppearance.frame.strength' => 'Frame strength must be an integer between 0 and 100.']);
+            }
+            if (array_key_exists('colorId', $value['frame'])) {
+                $projectColorIds = array_column((new ProjectColorLibrary)->normalize($designSettings['customColors'] ?? []), 'id');
+                $allowedColorIds = [...$capability->decorativeAppearance->frameColorIds, ...$projectColorIds];
+                if (! is_string($value['frame']['colorId']) || ! in_array($value['frame']['colorId'], $allowedColorIds, true)) {
+                    throw ValidationException::withMessages(['appearance.decorativeAppearance.frame.colorId' => 'The selected frame color is not supported by this Website.']);
+                }
             }
         }
     }

@@ -224,7 +224,7 @@ final class WebsiteTemplateRegistry
                         throw new LogicException("Template [{$definition->key}] has invalid presentation metadata [{$sectionType}].");
                     }
                     $controls = $option['mediaControls'] ?? [];
-                    foreach (['mediaPlacements', 'mediaSizes', 'frameStyles', 'cornerStyles', 'shadowStyles', 'foregroundColors', 'mediaContentGaps'] as $group) {
+                    foreach (['mediaPlacements', 'mediaSizes', 'cornerStyles', 'shadowStyles', 'foregroundColors', 'mediaContentGaps'] as $group) {
                         if (! isset($controls[$group])) {
                             continue;
                         }
@@ -274,12 +274,6 @@ final class WebsiteTemplateRegistry
                     $target = $fallback['presentation'] ?? null;
                     if ($capability === null || in_array($legacyPresentation, array_column($capability['options'], 'key'), true) || ! in_array($target, array_column($capability['options'], 'key'), true)) {
                         throw new LogicException("Template [{$definition->key}] has an invalid legacy presentation fallback [{$sectionType}.{$legacyPresentation}].");
-                    }
-                    if (isset($fallback['frameStyle'])) {
-                        $allowedFrames = array_column($definition->mediaControlsFor($sectionType, $target)['frameStyles']['options'] ?? [], 'key');
-                        if (! in_array($fallback['frameStyle'], $allowedFrames, true)) {
-                            throw new LogicException("Template [{$definition->key}] has an invalid legacy frame fallback [{$sectionType}.{$legacyPresentation}].");
-                        }
                     }
                 }
             }
@@ -367,8 +361,8 @@ final class WebsiteTemplateRegistry
                     default => [],
                 };
                 $allowedContainerRoles = match ($role) {
-                    DesignColorRole::Text->value => [ContainerColorRole::HeadingColor, ContainerColorRole::BodyColor],
-                    DesignColorRole::Accent->value => [ContainerColorRole::HeadingColor, ContainerColorRole::AccentColor],
+                    DesignColorRole::Text->value => [ContainerColorRole::HeadingColor, ContainerColorRole::BodyColor, ContainerColorRole::FrameColor],
+                    DesignColorRole::Accent->value => [ContainerColorRole::HeadingColor, ContainerColorRole::AccentColor, ContainerColorRole::FrameColor],
                     default => [],
                 };
                 if (in_array($role, [DesignColorRole::Canvas->value, DesignColorRole::Surface->value, DesignColorRole::Accent->value], true)) {

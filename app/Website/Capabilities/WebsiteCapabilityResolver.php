@@ -496,7 +496,7 @@ final class WebsiteCapabilityResolver
             contextDefaults: in_array($sectionId, ['blank', 'hero'], true) ? new ContextDefaultsCapability([], []) : $this->contextDefaultsForSection($template, $sectionId),
             allowedElementTypes: $allowedElements,
             maximumElementCount: $allowedElements === null ? null : 20,
-            decorativeAppearance: in_array($sectionId, ['blank', 'hero'], true) ? $this->sectionDecorativeAppearance($template) : null,
+            decorativeAppearance: in_array($sectionId, ['hero', 'gallery', 'rsvp', 'blank'], true) ? $this->sectionDecorativeAppearance($template) : null,
         );
     }
 
@@ -507,21 +507,28 @@ final class WebsiteCapabilityResolver
             ->pluck('id')
             ->values()
             ->all();
+        $frameColorIds = collect($template->designLibrary->colors)
+            ->filter(fn ($color): bool => in_array(ContainerColorRole::FrameColor, $color->allowedContainerRoles, true))
+            ->pluck('id')
+            ->values()
+            ->all();
 
         return $template->key === 'classic-filipiniana-v1'
             ? new SectionDecorativeAppearanceCapability(
                 textures: ['none', 'paper', 'fabric', 'grain'],
                 patterns: ['none', 'botanical', 'heritage'],
                 overlays: ['none', 'soft', 'warm', 'deep'],
-                frames: ['none', 'fine', 'ornamental', 'corners'],
+                frames: ['none', 'fine', 'ornamental'],
                 backgroundColorIds: $backgroundColorIds,
+                frameColorIds: $frameColorIds,
             )
             : new SectionDecorativeAppearanceCapability(
                 textures: ['none', 'paper', 'grain'],
                 patterns: ['none', 'geometric', 'botanical'],
                 overlays: ['none', 'soft', 'deep'],
-                frames: ['none', 'fine', 'corners'],
+                frames: ['none', 'fine'],
                 backgroundColorIds: $backgroundColorIds,
+                frameColorIds: $frameColorIds,
             );
     }
 

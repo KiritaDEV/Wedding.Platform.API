@@ -81,6 +81,18 @@ class WebsiteCapabilityRegistryTest extends TestCase
         $this->assertNull($resolver->section(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, 'people'));
     }
 
+    public function test_all_canonical_sections_expose_truthful_decorative_frame_capabilities(): void
+    {
+        $resolver = app(WebsiteCapabilityResolver::class);
+
+        foreach (['hero', 'gallery', 'rsvp', 'blank'] as $sectionType) {
+            $this->assertSame(['none', 'fine', 'ornamental'], $resolver->section(WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1, $sectionType)->decorativeAppearance->frames);
+            $this->assertSame(['none', 'fine'], $resolver->section(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, $sectionType)->decorativeAppearance->frames);
+            $this->assertNotEmpty($resolver->section(WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1, $sectionType)->decorativeAppearance->frameColorIds);
+            $this->assertNotEmpty($resolver->section(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, $sectionType)->decorativeAppearance->frameColorIds);
+        }
+    }
+
     public function test_global_design_capabilities_preserve_registry_options_defaults_and_resolver_lookups(): void
     {
         $resolver = app(WebsiteCapabilityResolver::class);

@@ -10,6 +10,7 @@ final readonly class SectionDecorativeAppearanceCapability
      * @param  list<string>  $overlays
      * @param  list<string>  $frames
      * @param  list<string>  $backgroundColorIds
+     * @param  list<string>  $frameColorIds
      */
     public function __construct(
         public array $textures,
@@ -17,5 +18,6 @@ final readonly class SectionDecorativeAppearanceCapability
         public array $overlays,
         public array $frames,
         public array $backgroundColorIds,
+        public array $frameColorIds,
     ) {}
 }

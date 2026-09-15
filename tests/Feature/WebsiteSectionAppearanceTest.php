@@ -6,6 +6,7 @@ use App\Actions\Events\CreateEvent;
 use App\Models\Event;
 use App\Models\User;
 use App\Models\Website;
+use App\Website\ProjectColorLibrary;
 use App\Website\WebsiteSectionAppearance;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,7 +158,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             'innerSpacing' => ['top' => 'xl', 'right' => 'xs', 'bottom' => 'm', 'left' => 's'],
             'decorativeAppearance' => [
                 'background' => ['colorId' => 'terracotta-canvas', 'texture' => 'paper', 'textureStrength' => 55, 'pattern' => 'botanical', 'patternStrength' => 50, 'overlay' => 'warm'],
-                'frame' => ['style' => 'fine'],
+                'frame' => ['style' => 'fine', 'size' => 50, 'strength' => 100, 'colorId' => 'terracotta-accent'],
             ],
         ];
         $url = "/api/events/{$event->id}/website/sections/{$blank['id']}/appearance";
@@ -189,6 +190,78 @@ class WebsiteSectionAppearanceTest extends TestCase
         $this->assertSame([], $normalized['designDefaults']);
     }
 
+    public function test_gallery_and_rsvp_accept_generic_section_decorative_appearance(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+
+        foreach (['gallery', 'rsvp'] as $type) {
+            $section = $event->website->sections()->where('type', $type)->sole();
+            $appearance = [
+                ...WebsiteSectionAppearance::DEFAULT,
+                'decorativeAppearance' => [
+                    'background' => ['texture' => 'paper', 'textureStrength' => 55, 'pattern' => 'botanical', 'patternStrength' => 50, 'overlay' => 'warm'],
+                    'frame' => ['style' => 'ornamental', 'size' => 200, 'strength' => 0, 'colorId' => 'terracotta-accent'],
+                ],
+            ];
+            $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+            $this->assertSame($appearance, $section->refresh()->appearance);
+        }
+    }
+
+    public function test_frame_numeric_boundaries_and_unknown_values_are_rejected(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $section = $event->website->sections()->where('type', 'gallery')->sole();
+        $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+
+        foreach ([
+            ['size' => 49], ['size' => 201], ['size' => 50.5],
+            ['strength' => -1], ['strength' => 101], ['strength' => 25.5],
+            ['colorId' => 'missing-frame-color'], ['inset' => 20],
+        ] as $invalidFrame) {
+            $appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', ...$invalidFrame]]];
+            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertUnprocessable();
+        }
+    }
+
+    public function test_frame_overrides_round_trip_independently_in_every_composition_appearance_branch(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $hero = $event->website->sections()->where('type', 'hero')->sole();
+        $content = $hero->content;
+        foreach (['desktop', 'tablet', 'mobile'] as $viewport) {
+            $content['compositions']['custom'][$viewport] = $content['compositions']['shared'];
+        }
+        $hero->content = $content;
+        $hero->save();
+
+        $branch = fn (int $size, int $strength): array => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'size' => $size, 'strength' => $strength, 'colorId' => 'terracotta-accent']]];
+        $appearance = ['shared' => $branch(100, 42), 'custom' => [
+            'desktop' => $branch(50, 0),
+            'tablet' => $branch(150, 50),
+            'mobile' => $branch(200, 100),
+        ]];
+        $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
+        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->assertSame($appearance, $hero->refresh()->appearance);
+    }
+
+    public function test_project_color_id_is_valid_for_frame_color_and_remains_sparse(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $projectColorId = ProjectColorLibrary::ID_PREFIX.(string) Str::ulid();
+        $settings = $event->website->design_settings;
+        $settings['customColors'] = [['id' => $projectColorId, 'value' => '#123456']];
+        $event->website->design_settings = $settings;
+        $event->website->save();
+        $section = $event->website->sections()->where('type', 'gallery')->sole();
+        $appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'colorId' => $projectColorId]]];
+        $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->assertSame($appearance, $section->refresh()->appearance);
+    }
+
     public function test_invalid_missing_and_extra_appearance_values_are_rejected(): void
     {
         [$event, $owner] = $this->eventWithOwner();
@@ -201,6 +274,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             ['headingAlignment' => 'inherit', 'bodyAlignment' => 'inherit', 'backgroundTreatment' => 'inherit', 'emphasis' => 'huge'],
             ['headingAlignment' => 'inherit', 'bodyAlignment' => 'inherit', 'backgroundTreatment' => 'inherit'],
             [...WebsiteSectionAppearance::DEFAULT, 'customCss' => 'body{}'],
+            [...WebsiteSectionAppearance::DEFAULT, 'frameStyle' => 'heritage'],
         ];
 
         foreach ($invalid as $appearance) {

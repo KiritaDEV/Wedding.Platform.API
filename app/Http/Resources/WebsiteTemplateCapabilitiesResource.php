@@ -119,6 +119,7 @@ class WebsiteTemplateCapabilitiesResource extends JsonResource
                     'overlays' => $section->decorativeAppearance->overlays,
                     'frames' => $section->decorativeAppearance->frames,
                     'backgroundColorIds' => $section->decorativeAppearance->backgroundColorIds,
+                    'frameColorIds' => $section->decorativeAppearance->frameColorIds,
                 ],
             ], $this->sections),
         ];
