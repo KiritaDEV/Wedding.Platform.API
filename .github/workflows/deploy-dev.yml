@@ -15,16 +15,16 @@ jobs:
       - kirita-dev
 
     steps:
-      - name: Verify DEV deployment access
+      - name: Verify DEV fetch access
         shell: powershell
-        run:
-  	   $git = "C:\Program Files\Git\cmd\git.exe"
-	   $repo = "C:\Kirita\dev\api"
+        run: |
+          $git = "C:\Program Files\Git\cmd\git.exe"
+          $repo = "C:\Kirita\dev\api"
 
-  	   & $git -C $repo fetch origin develop
+          & $git -C $repo fetch origin develop
 
-	   Write-Host "Currently deployed:"
-  	   & $git -C $repo rev-parse HEAD
+          Write-Host "Currently deployed:"
+          & $git -C $repo rev-parse HEAD
 
-           Write-Host "Latest origin/develop:"
-  	   & $git -C $repo rev-parse origin/develop
+          Write-Host "Latest origin/develop:"
+          & $git -C $repo rev-parse origin/develop
