@@ -1,0 +1,23 @@
+name: Deploy DEV API
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  verify-runner:
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - kirita-dev
+
+    steps:
+      - name: Verify Kirita DEV runner
+        shell: powershell
+        run: |
+          Write-Host "Kirita DEV runner is working."
+          Write-Host "Computer: $env:COMPUTERNAME"
+          Write-Host "User: $env:USERNAME"
