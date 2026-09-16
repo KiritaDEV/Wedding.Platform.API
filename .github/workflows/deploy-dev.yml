@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  verify-runner:
+  deploy:
     runs-on:
       - self-hosted
       - Windows
@@ -15,9 +15,9 @@ jobs:
       - kirita-dev
 
     steps:
-      - name: Verify Kirita DEV runner
+      - name: Verify DEV deployment access
         shell: powershell
         run: |
-          Write-Host "Kirita DEV runner is working."
-          Write-Host "Computer: $env:COMPUTERNAME"
-          Write-Host "User: $env:USERNAME"
+          & "C:\Program Files\Git\cmd\git.exe" -C "C:\Kirita\dev\api" status
+          & "C:\xampp\php\php.exe" --version
+          & "C:\ProgramData\ComposerSetup\bin\composer.bat" --version
