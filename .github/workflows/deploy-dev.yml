@@ -18,13 +18,26 @@ jobs:
       - name: Verify DEV fetch access
         shell: powershell
         run: |
-          $git = "C:\Program Files\Git\cmd\git.exe"
-          $repo = "C:\Kirita\dev\api"
+  $git = "C:\Program Files\Git\cmd\git.exe"
+  $php = "C:\xampp\php\php.exe"
+  $composer = "C:\ProgramData\ComposerSetup\bin\composer.bat"
+  $repo = "C:\Kirita\dev\api"
 
-          & $git -C $repo fetch origin develop
+  & $git -C $repo fetch origin develop
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          Write-Host "Currently deployed:"
-          & $git -C $repo rev-parse HEAD
+  & $git -C $repo reset --hard origin/develop
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          Write-Host "Latest origin/develop:"
-          & $git -C $repo rev-parse origin/develop
+  Push-Location $repo
+
+  & $composer install --no-interaction --prefer-dist --optimize-autoloader
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  & $php artisan migrate --force
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  & $php artisan optimize:clear
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  Pop-Location
