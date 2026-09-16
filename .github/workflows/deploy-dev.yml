@@ -18,6 +18,13 @@ jobs:
       - name: Verify DEV deployment access
         shell: powershell
         run: |
-          & "C:\Program Files\Git\cmd\git.exe" -C "C:\Kirita\dev\api" status
-          & "C:\xampp\php\php.exe" --version
-          & "C:\ProgramData\ComposerSetup\bin\composer.bat" --version
+  		$git = "C:\Program Files\Git\cmd\git.exe"
+		$repo = "C:\Kirita\dev\api"
+
+  		& $git -C $repo fetch origin develop
+
+  		Write-Host "Currently deployed:"
+  		& $git -C $repo rev-parse HEAD
+
+  		Write-Host "Latest origin/develop:"
+  		& $git -C $repo rev-parse origin/develop
