@@ -15,7 +15,7 @@ final class BackgroundMedia
             "{$prefix}.focalPoint" => ['sometimes', 'array:x,y'],
             "{$prefix}.focalPoint.x" => ["required_with:{$prefix}.focalPoint", 'numeric', 'between:0,1'],
             "{$prefix}.focalPoint.y" => ["required_with:{$prefix}.focalPoint", 'numeric', 'between:0,1'],
-            "{$prefix}.zoom" => ['sometimes', 'numeric', 'gt:0', 'lte:3'],
+            "{$prefix}.zoom" => ['sometimes', 'numeric', 'between:1,3'],
         ];
 
         return $rules;

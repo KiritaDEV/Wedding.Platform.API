@@ -97,13 +97,20 @@ class WebsiteSectionAppearanceTest extends TestCase
         $hero = $event->website->sections()->where('type', 'hero')->sole();
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
 
-        $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => 'screen', 'backgroundImageOpacity' => 45]];
+        $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => 100], 'backgroundImageOpacity' => 45]];
         $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
-            ->assertJsonPath('data.sections.0.appearance.shared.height', 'screen')
+            ->assertJsonPath('data.sections.0.appearance.shared.height.unit', 'svh')
+            ->assertJsonPath('data.sections.0.appearance.shared.height.value', 100)
             ->assertJsonPath('data.sections.0.appearance.shared.backgroundImageOpacity', 45);
 
-        $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => 'auto', 'backgroundImageOpacity' => 100]]])
+        $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'backgroundImageOpacity' => 100]]])
             ->assertOk()->assertJsonMissingPath('data.sections.0.appearance.shared.height')->assertJsonMissingPath('data.sections.0.appearance.shared.backgroundImageOpacity');
+        foreach ([25, 100, 150] as $value) {
+            $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => $value]]]])->assertOk();
+        }
+        foreach (['auto', 'screen', '75svh', ['unit' => 'vh', 'value' => 75], ['unit' => 'px', 'value' => 600], ['unit' => 'svh', 'value' => 24], ['unit' => 'svh', 'value' => 151], ['unit' => 'svh', 'value' => 75.5], ['unit' => 'svh', 'value' => 75, 'extra' => true]] as $height) {
+            $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => $height]]])->assertUnprocessable();
+        }
         $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'presentation' => 'immersive']]])->assertUnprocessable();
     }
 
@@ -225,7 +232,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         }
     }
 
-    public function test_frame_overrides_round_trip_independently_in_every_composition_appearance_branch(): void
+    public function test_frame_and_height_overrides_round_trip_independently_in_every_composition_appearance_branch(): void
     {
         [$event, $owner] = $this->eventWithOwner();
         $hero = $event->website->sections()->where('type', 'hero')->sole();
@@ -236,11 +243,11 @@ class WebsiteSectionAppearanceTest extends TestCase
         $hero->content = $content;
         $hero->save();
 
-        $branch = fn (int $size, int $strength): array => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'size' => $size, 'strength' => $strength, 'colorId' => 'terracotta-accent']]];
-        $appearance = ['shared' => $branch(100, 42), 'custom' => [
-            'desktop' => $branch(50, 0),
-            'tablet' => $branch(150, 50),
-            'mobile' => $branch(200, 100),
+        $branch = fn (int $size, int $strength, int $height): array => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => $height], 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'size' => $size, 'strength' => $strength, 'colorId' => 'terracotta-accent']]];
+        $appearance = ['shared' => $branch(100, 42, 75), 'custom' => [
+            'desktop' => $branch(50, 0, 25),
+            'tablet' => $branch(150, 50, 100),
+            'mobile' => $branch(200, 100, 150),
         ]];
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
         $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
