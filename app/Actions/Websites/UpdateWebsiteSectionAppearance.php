@@ -129,14 +129,13 @@ final class UpdateWebsiteSectionAppearance
             $expectedKeys[] = 'decorativeAppearance';
         }
         if (array_key_exists('height', $appearance)) {
-            if ($section->type !== 'hero' || ! in_array($appearance['height'], ['auto', 'screen'], true)) {
-                throw ValidationException::withMessages(['appearance.height' => 'Hero height must be auto or screen.']);
+            $height = $appearance['height'];
+            if ($section->type !== 'hero' || ! is_array($height) || count($height) !== 2 || array_diff(array_keys($height), ['unit', 'value']) !== []
+                || ($height['unit'] ?? null) !== 'svh' || ! is_int($height['value'] ?? null)
+                || $height['value'] < 25 || $height['value'] > 150) {
+                throw ValidationException::withMessages(['appearance.height' => 'Hero height must use an svh integer between 25 and 150.']);
             }
-            if ($appearance['height'] === 'auto') {
-                unset($appearance['height']);
-            } else {
-                $expectedKeys[] = 'height';
-            }
+            $expectedKeys[] = 'height';
         }
         if (array_key_exists('backgroundImageOpacity', $appearance)) {
             if ($section->type !== 'hero' || ! is_int($appearance['backgroundImageOpacity']) || $appearance['backgroundImageOpacity'] < 0 || $appearance['backgroundImageOpacity'] > 100) {

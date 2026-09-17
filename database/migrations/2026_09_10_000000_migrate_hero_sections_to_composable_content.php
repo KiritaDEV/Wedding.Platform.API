@@ -56,7 +56,7 @@ return new class extends Migration
             'childFlow' => [
                 'elements' => [
                     ['id' => $headlineId, 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => $headline]]]]], 'appearance' => ['fontSize' => 'xl', 'fontWeight' => 700, 'alignment' => 'center']],
-                    ['id' => $dateId, 'type' => 'date', 'editorName' => 'Date 1', 'appearance' => ['textStyle' => 'subheading', 'alignment' => 'center']],
+                    ['id' => $dateId, 'type' => 'date', 'editorName' => 'Date 1', 'appearance' => ['alignment' => 'center']],
                     ['id' => $supportingId, 'type' => 'text', 'editorName' => 'Text 2', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => $supporting]]]]], 'appearance' => ['alignment' => 'center']],
                 ],
                 'order' => array_map(fn (string $id): array => ['kind' => 'element', 'id' => $id], [$headlineId, $dateId, $supportingId]),
@@ -74,7 +74,7 @@ return new class extends Migration
         $appearance = array_intersect_key($appearance, array_flip($allowed));
 
         if ($presentation === 'immersive') {
-            $appearance['height'] = 'screen';
+            $appearance['height'] = ['unit' => 'svh', 'value' => 100];
         }
         if (is_array($backgroundMedia)) {
             $appearance['backgroundMedia'] = $backgroundMedia;

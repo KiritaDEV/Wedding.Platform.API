@@ -73,7 +73,7 @@ final class InitializeWebsiteSections
         return ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => [
             'elements' => [
                 ['id' => $headlineId, 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => $eventName]]]]], 'appearance' => ['fontSize' => 'xl', 'fontWeight' => 700, 'alignment' => 'center']],
-                ['id' => $dateId, 'type' => 'date', 'editorName' => 'Date 1', 'appearance' => ['textStyle' => 'subheading', 'alignment' => 'center']],
+                ['id' => $dateId, 'type' => 'date', 'editorName' => 'Date 1', 'appearance' => ['alignment' => 'center']],
                 ['id' => $supportingId, 'type' => 'text', 'editorName' => 'Text 2', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Together with their families']]]]], 'appearance' => ['alignment' => 'center']],
             ],
             'order' => array_map(fn (string $id): array => ['kind' => 'element', 'id' => $id], [$headlineId, $dateId, $supportingId]),

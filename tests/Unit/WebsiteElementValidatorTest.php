@@ -82,14 +82,15 @@ class WebsiteElementValidatorTest extends TestCase
     {
         $element = [
             'id' => 'date', 'type' => 'date', 'editorName' => 'Date 1',
-            'appearance' => ['format' => 'short', 'showWeekday' => false, 'alignment' => 'end', 'textStyle' => 'body', 'fontFamilyId' => 'modern-sans', 'fontSize' => 'l', 'fontWeight' => 700, 'lineHeight' => 'relaxed', 'letterSpacing' => 'wide', 'colorId' => 'accent', 'responsive' => ['mobile' => ['fontSize' => 's', 'alignment' => 'center']]],
+            'appearance' => ['format' => 'short', 'showWeekday' => false, 'alignment' => 'end', 'fontFamilyId' => 'modern-sans', 'fontSize' => 'l', 'fontWeight' => 700, 'lineHeight' => 'relaxed', 'letterSpacing' => 'wide', 'colorId' => 'accent', 'responsive' => ['mobile' => ['fontSize' => 's', 'alignment' => 'center']]],
         ];
 
         $this->assertSame($element, $this->validator->validate($element));
-        foreach (['heading', 'subheading', 'eyebrow', 'body', 'caption'] as $style) {
-            $this->assertSame($style, $this->validator->validate([...$element, 'appearance' => ['textStyle' => $style]])['appearance']['textStyle']);
+        foreach (['6xl', '7xl'] as $size) {
+            $appearance = ['fontSize' => $size, 'responsive' => ['tablet' => ['fontSize' => '7xl'], 'mobile' => ['fontSize' => '6xl']]];
+            $this->assertSame($appearance, $this->validator->validate([...$element, 'appearance' => $appearance])['appearance']);
         }
-        foreach (['format' => 'custom', 'alignment' => 'justify', 'textStyle' => 'custom'] as $key => $value) {
+        foreach (['format' => 'custom', 'alignment' => 'justify', 'textStyle' => 'heading'] as $key => $value) {
             $this->assertInvalid([...$element, 'appearance' => [$key => $value]]);
         }
     }

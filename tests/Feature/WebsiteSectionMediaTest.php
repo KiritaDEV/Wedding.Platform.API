@@ -84,14 +84,14 @@ class WebsiteSectionMediaTest extends TestCase
         $content['compositions']['custom']['tablet'] = ['childFlow' => ['elements' => [], 'order' => []]];
         $content['compositions']['custom']['mobile'] = ['childFlow' => ['elements' => [], 'order' => []]];
         $appearance = $this->withHeroBackground($hero->appearance, ['assetId' => $desktop->id, 'focalPoint' => ['x' => .2, 'y' => .7], 'zoom' => 1.8]);
-        $appearance['custom']['tablet'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $tablet->id, 'zoom' => .7]];
-        $appearance['custom']['mobile'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $mobile->id, 'focalPoint' => ['x' => .8, 'y' => .3], 'zoom' => .42]];
+        $appearance['custom']['tablet'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $tablet->id, 'zoom' => 1.7]];
+        $appearance['custom']['mobile'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $mobile->id, 'focalPoint' => ['x' => .8, 'y' => .3], 'zoom' => 1.42]];
         $url = "/api/events/{$event->id}/websites/{$hero->website_id}/sections/{$hero->id}/presentation";
         $response = $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk();
 
         $saved = $hero->refresh()->appearance;
-        $this->assertSame(.7, $saved['custom']['tablet']['backgroundMedia']['zoom']);
-        $this->assertSame(.42, $saved['custom']['mobile']['backgroundMedia']['zoom']);
+        $this->assertSame(1.7, $saved['custom']['tablet']['backgroundMedia']['zoom']);
+        $this->assertSame(1.42, $saved['custom']['mobile']['backgroundMedia']['zoom']);
         foreach ([$desktop, $tablet, $mobile] as $asset) {
             $response->assertJsonPath("data.media.{$asset->id}.id", $asset->id);
         }
@@ -116,10 +116,10 @@ class WebsiteSectionMediaTest extends TestCase
         $hero = $website->sections()->where('type', 'hero')->sole();
         $base = $this->withHeroBackground($hero->appearance, ['assetId' => $asset->id]);
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
-        foreach ([.01, .42, 1, 1.5, 3] as $zoom) {
+        foreach ([1, 1.5, 3] as $zoom) {
             $this->actingAs($owner)->putJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertOk();
         }
-        foreach ([0, -.1, 3.1, 'close'] as $zoom) {
+        foreach ([0, -.1, .99, 3.1, 'close'] as $zoom) {
             $this->actingAs($owner)->putJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertUnprocessable();
         }
         $this->actingAs($owner)->putJson($url, ['appearance' => $base])->assertOk();
@@ -128,7 +128,7 @@ class WebsiteSectionMediaTest extends TestCase
         $zoomed = $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => 1.8]);
         $this->actingAs($owner)->putJson($url, ['appearance' => $zoomed])->assertOk();
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", [
-            'appearance' => ['shared' => [...$zoomed['shared'], 'height' => 'screen']],
+            'appearance' => ['shared' => [...$zoomed['shared'], 'height' => ['unit' => 'svh', 'value' => 100]]],
         ])->assertOk();
         $this->assertSame(1.8, $hero->refresh()->appearance['shared']['backgroundMedia']['zoom']);
     }

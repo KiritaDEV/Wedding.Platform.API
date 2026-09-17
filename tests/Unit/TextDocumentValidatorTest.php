@@ -84,7 +84,7 @@ class TextDocumentValidatorTest extends TestCase
         yield 'unknown appearance field' => [['unknown' => true]];
         yield 'responsive font weight' => [['responsive' => ['mobile' => ['fontWeight' => 700]]]];
         yield 'malformed font weight' => [['fontWeight' => 500]];
-        yield 'unknown display size' => [['fontSize' => '6xl']];
+        yield 'unknown display size' => [['fontSize' => '8xl']];
         yield 'unknown shadow strength' => [['textShadow' => 'extreme']];
         yield 'malformed shadow color reference' => [['textShadow' => 'soft', 'textShadowColorId' => ['ink']]];
         yield 'unknown glow strength' => [['glow' => 'extreme']];
@@ -95,10 +95,10 @@ class TextDocumentValidatorTest extends TestCase
     public function test_display_sizes_and_bounded_effects_are_preserved_and_inactive_colors_are_pruned(): void
     {
         $validator = new WebsiteElementValidator(new CompositionGroupValidator);
-        foreach (['2xl', '3xl', '4xl', '5xl'] as $size) {
+        foreach (['2xl', '3xl', '4xl', '5xl', '6xl', '7xl'] as $size) {
             $element = ['id' => 'text-1', 'type' => 'text', 'editorName' => 'Text 1',
                 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Hero']]]]],
-                'appearance' => ['fontSize' => $size, 'textShadow' => 'strong', 'textShadowColorId' => 'ink', 'glow' => 'medium', 'glowColorId' => 'accent', 'responsive' => ['tablet' => ['fontSize' => '4xl'], 'mobile' => ['fontSize' => '2xl']]],
+                'appearance' => ['fontSize' => $size, 'textShadow' => 'strong', 'textShadowColorId' => 'ink', 'glow' => 'medium', 'glowColorId' => 'accent', 'responsive' => ['tablet' => ['fontSize' => '7xl'], 'mobile' => ['fontSize' => '6xl']]],
             ];
             $this->assertSame($element, $validator->validate($element));
         }

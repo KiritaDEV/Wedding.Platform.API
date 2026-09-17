@@ -166,7 +166,7 @@ class WebsiteDraftApiTest extends TestCase
         [$event, $owner] = $this->createEvent();
         $section = $this->blankSection($event);
         $appearance = [
-            'fontFamilyId' => 'inter', 'fontSize' => '5xl', 'fontWeight' => 600,
+            'fontFamilyId' => 'inter', 'fontSize' => '7xl', 'fontWeight' => 600,
             'lineHeight' => 'relaxed', 'letterSpacing' => 'wide', 'alignment' => 'center',
             'colorId' => 'terracotta-text', 'italic' => true, 'underline' => true,
             'strikethrough' => true, 'textTransform' => 'uppercase',
