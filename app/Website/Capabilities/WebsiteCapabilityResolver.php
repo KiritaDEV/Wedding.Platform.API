@@ -375,10 +375,7 @@ final class WebsiteCapabilityResolver
         string $sectionId,
         bool $includeColors = true,
     ): ContextDefaultsCapability {
-        $roles = match ($sectionId) {
-            'gallery' => ['headingFont', 'headingColor'],
-            default => ['headingFont', 'bodyFont', 'headingColor', 'bodyColor', 'accentColor'],
-        };
+        $roles = ['headingFont', 'bodyFont', 'headingColor', 'bodyColor', 'accentColor'];
         if (! $includeColors) {
             $roles = array_values(array_filter($roles, fn (string $role): bool => str_ends_with($role, 'Font')));
         }
@@ -485,15 +482,19 @@ final class WebsiteCapabilityResolver
 
         $allowedElements = match ($sectionId) {
             'blank', 'hero' => [WebsiteElementType::Text->value, WebsiteElementType::Date->value, WebsiteElementType::Accordion->value, WebsiteElementType::Schedule->value, WebsiteElementType::People->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
+            'gallery' => [WebsiteElementType::Text->value, WebsiteElementType::Divider->value, WebsiteElementType::CompositionGroup->value],
             default => null,
         };
+        if ($allowedElements !== null && $template->key === WebsiteTemplateRegistry::MODERN_EDITORIAL_V1) {
+            $allowedElements = array_values(array_filter($allowedElements, fn (string $type): bool => $type !== WebsiteElementType::Divider->value));
+        }
 
         return new SectionCapability(
             id: $sectionId,
             appearanceControls: $controls,
             defaultPresentation: $presentationDefinition['default'] ?? null,
             presentations: $presentations,
-            contextDefaults: in_array($sectionId, ['blank', 'hero'], true) ? new ContextDefaultsCapability([], []) : $this->contextDefaultsForSection($template, $sectionId),
+            contextDefaults: in_array($sectionId, ['blank', 'hero', 'gallery'], true) ? new ContextDefaultsCapability([], []) : $this->contextDefaultsForSection($template, $sectionId),
             allowedElementTypes: $allowedElements,
             maximumElementCount: $allowedElements === null ? null : 20,
             decorativeAppearance: in_array($sectionId, ['hero', 'gallery', 'rsvp', 'blank'], true) ? $this->sectionDecorativeAppearance($template) : null,

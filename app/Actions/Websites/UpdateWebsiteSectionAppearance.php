@@ -23,10 +23,10 @@ final class UpdateWebsiteSectionAppearance
     /** @param array<string, mixed> $appearance */
     public function handle(WebsiteSection $section, array $appearance, bool $persist = true): WebsiteSection
     {
-        if (in_array($section->type, ['hero', 'blank'], true) && ! array_key_exists('shared', $appearance)) {
+        if (in_array($section->type, ['hero', 'gallery', 'blank'], true) && ! array_key_exists('shared', $appearance)) {
             throw ValidationException::withMessages(['appearance' => 'Composition Sections require the canonical shared/custom appearance envelope.']);
         }
-        if (in_array($section->type, ['hero', 'blank'], true) && array_key_exists('shared', $appearance)) {
+        if (in_array($section->type, ['hero', 'gallery', 'blank'], true) && array_key_exists('shared', $appearance)) {
             if (array_diff(array_keys($appearance), ['shared', 'custom', 'designDefaults']) !== [] || ! is_array($appearance['shared']) || (isset($appearance['custom']) && ! is_array($appearance['custom']))) {
                 throw ValidationException::withMessages(['appearance' => 'Provide the canonical shared/custom Section appearance envelope.']);
             }
@@ -84,6 +84,22 @@ final class UpdateWebsiteSectionAppearance
         }
 
         $expectedKeys = ['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis'];
+        if ($section->type === 'gallery') {
+            foreach (['columns', 'gap', 'aspectRatio'] as $setting) {
+                if (! array_key_exists($setting, $appearance)) {
+                    continue;
+                }
+                $valid = match ($setting) {
+                    'columns' => is_int($appearance[$setting]) && $appearance[$setting] >= 1 && $appearance[$setting] <= 6,
+                    'gap' => in_array($appearance[$setting], ['small', 'medium', 'large'], true),
+                    'aspectRatio' => in_array($appearance[$setting], ['square', 'portrait', 'landscape'], true),
+                };
+                if (! $valid) {
+                    throw ValidationException::withMessages(["appearance.{$setting}" => "The selected Gallery {$setting} is invalid."]);
+                }
+                $expectedKeys[] = $setting;
+            }
+        }
         $actualKeys = array_keys($appearance);
         $activePresentation = $sectionCapability->defaultPresentation;
         if (array_key_exists('presentation', $appearance)) {

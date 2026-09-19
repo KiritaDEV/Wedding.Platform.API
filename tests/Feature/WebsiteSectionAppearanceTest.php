@@ -32,7 +32,7 @@ class WebsiteSectionAppearanceTest extends TestCase
 
         $this->assertCount(3, $event->website->sections);
         $event->website->sections->each(fn ($section) => $this->assertSame(
-            $section->type === 'hero' ? ['shared' => WebsiteSectionAppearance::DEFAULT] : WebsiteSectionAppearance::DEFAULT,
+            in_array($section->type, ['hero', 'gallery'], true) ? ['shared' => WebsiteSectionAppearance::DEFAULT] : WebsiteSectionAppearance::DEFAULT,
             $section->appearance,
         ));
     }
@@ -75,12 +75,13 @@ class WebsiteSectionAppearanceTest extends TestCase
         [$event, $owner] = $this->eventWithOwner();
         $section = $event->website->sections()->where('type', 'gallery')->firstOrFail();
         $before = $section->only(['content', 'sort_order', 'is_enabled']);
-        $appearance = [
+        $branch = [
             'headingAlignment' => 'right',
             'bodyAlignment' => 'left',
             'backgroundTreatment' => 'accent',
             'emphasis' => 'featured',
         ];
+        $appearance = ['shared' => $branch];
 
         $this->actingAs($owner)
             ->putJson("/api/events/{$event->id}/website/sections/{$section->id}/appearance", compact('appearance'))
@@ -203,13 +204,14 @@ class WebsiteSectionAppearanceTest extends TestCase
 
         foreach (['gallery', 'rsvp'] as $type) {
             $section = $event->website->sections()->where('type', $type)->sole();
-            $appearance = [
+            $branch = [
                 ...WebsiteSectionAppearance::DEFAULT,
                 'decorativeAppearance' => [
                     'background' => ['texture' => 'paper', 'textureStrength' => 55, 'pattern' => 'botanical', 'patternStrength' => 50, 'overlay' => 'warm'],
                     'frame' => ['style' => 'ornamental', 'size' => 200, 'strength' => 0, 'colorId' => 'terracotta-accent'],
                 ],
             ];
+            $appearance = $type === 'gallery' ? ['shared' => $branch] : $branch;
             $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
             $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
             $this->assertSame($appearance, $section->refresh()->appearance);
@@ -227,7 +229,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             ['strength' => -1], ['strength' => 101], ['strength' => 25.5],
             ['colorId' => 'missing-frame-color'], ['inset' => 20],
         ] as $invalidFrame) {
-            $appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', ...$invalidFrame]]];
+            $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', ...$invalidFrame]]]];
             $this->actingAs($owner)->putJson($url, compact('appearance'))->assertUnprocessable();
         }
     }
@@ -263,7 +265,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $event->website->design_settings = $settings;
         $event->website->save();
         $section = $event->website->sections()->where('type', 'gallery')->sole();
-        $appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'colorId' => $projectColorId]]];
+        $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'colorId' => $projectColorId]]]];
         $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
         $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
         $this->assertSame($appearance, $section->refresh()->appearance);

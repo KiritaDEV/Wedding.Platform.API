@@ -136,13 +136,13 @@ class WebsiteProjectCreationTest extends TestCase
         );
         $projectB = Website::query()->findOrFail($response->json('data.id'));
 
-        $this->assertSame(['colorTheme', 'fontSet', 'artStyle', 'projectDefaults'], array_keys($projectB->design_settings));
+        $this->assertSame(['colorTheme', 'fontSet', 'artStyle', 'projectDefaults', 'customColors'], array_keys($projectB->design_settings));
         $this->assertSame([], $projectB->design_settings['projectDefaults']);
         $this->assertStringContainsString(
             '"projectDefaults":{}',
             DB::table('websites')->where('id', $projectB->id)->value('design_settings'),
         );
-        $this->assertSame(8, $projectB->sections()->count());
+        $this->assertSame(3, $projectB->sections()->count());
         $this->assertEmpty(array_intersect(
             $projectA->sections()->pluck('id')->all(),
             $projectB->sections()->pluck('id')->all(),

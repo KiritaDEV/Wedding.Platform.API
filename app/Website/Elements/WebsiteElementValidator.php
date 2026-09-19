@@ -97,7 +97,6 @@ final class WebsiteElementValidator
             WebsiteElementType::Divider => $this->dividerRules(),
             WebsiteElementType::Quote => $this->quoteRules(),
             WebsiteElementType::Cta => $this->ctaRules($element),
-            WebsiteElementType::MediaCollection => $this->mediaCollectionRules(),
             WebsiteElementType::EventDate => $this->baseRules('eventDate'),
             WebsiteElementType::EventTime => $this->baseRules('eventTime'),
             WebsiteElementType::Countdown => $this->baseRules('countdown'),
@@ -117,13 +116,6 @@ final class WebsiteElementValidator
 
         if ($type === WebsiteElementType::Cta && isset($validated['action']['sectionId'])) {
             $validated['action']['sectionId'] = trim($validated['action']['sectionId']);
-        }
-        if ($type === WebsiteElementType::MediaCollection) {
-            $validated['items'] = array_map(function (array $item): array {
-                $item['id'] = trim($item['id']);
-
-                return $item;
-            }, $validated['items']);
         }
         if ($type === WebsiteElementType::Media) {
             $kinds = [];
@@ -597,20 +589,6 @@ final class WebsiteElementValidator
         }
 
         return $rules;
-    }
-
-    /** @return array<string, list<string>> */
-    private function mediaCollectionRules(): array
-    {
-        return [
-            'element' => ['required', 'array:id,type,items'],
-            'element.id' => $this->idRules(),
-            'element.type' => ['required', 'in:mediaCollection'],
-            'element.items' => ['present', 'array', 'list'],
-            'element.items.*' => ['required', 'array:id,mediaId'],
-            'element.items.*.id' => $this->idRules(),
-            'element.items.*.mediaId' => ['required', 'string', 'ulid'],
-        ];
     }
 
     /** @return array<string, list<string>> */

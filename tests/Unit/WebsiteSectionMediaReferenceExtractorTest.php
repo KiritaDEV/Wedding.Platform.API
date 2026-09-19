@@ -118,8 +118,20 @@ class WebsiteSectionMediaReferenceExtractorTest extends TestCase
     {
         return [
             ['hero', []],
-            ['gallery', ['items' => [['mediaId' => 'unwired']]]],
+            ['gallery', ['semantic' => ['items' => [['id' => 'missing-media']]]]],
         ];
+    }
+
+    public function test_extracts_gallery_items_with_stable_item_context(): void
+    {
+        $content = ['semantic' => ['items' => [
+            ['id' => 'first', 'type' => 'image', 'mediaId' => 'same'],
+            ['id' => 'second', 'type' => 'image', 'mediaId' => 'same'],
+        ]]];
+        $this->assertSame([
+            ['mediaId' => 'same', 'reference' => ['type' => 'sectionMedia', 'itemId' => 'first']],
+            ['mediaId' => 'same', 'reference' => ['type' => 'sectionMedia', 'itemId' => 'second']],
+        ], $this->extractor->extract('gallery', 'gallery', $content));
     }
 
     private function content(array $elements): array

@@ -9,6 +9,13 @@ final class WebsiteElementIdentityRegenerator
     /** @param array<string, mixed> $content @return array<string, mixed> */
     public function regenerateSectionContent(array $content): array
     {
+        if (is_array($content['semantic']['items'] ?? null)) {
+            $content['semantic']['items'] = array_map(function (array $item): array {
+                $item['id'] = (string) Str::ulid();
+
+                return $item;
+            }, $content['semantic']['items']);
+        }
         if (! isset($content['compositions']['shared'])) {
             return $content;
         }

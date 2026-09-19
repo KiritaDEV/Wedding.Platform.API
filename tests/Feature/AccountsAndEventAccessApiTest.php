@@ -20,6 +20,7 @@ class AccountsAndEventAccessApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['sanctum.stateful' => ['localhost']]);
 
         $this->withHeaders([
             'Accept' => 'application/json',

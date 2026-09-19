@@ -78,7 +78,7 @@ class WebsiteInitializationTest extends TestCase
             } else {
                 $this->assertSame($definition->defaultContent, $section->content);
             }
-            $expectedAppearance = in_array($section->type, ['hero', 'blank'], true)
+            $expectedAppearance = in_array($section->type, ['hero', 'gallery', 'blank'], true)
                 ? ['shared' => $template->appearanceDefaultsFor($section->type)]
                 : $template->appearanceDefaultsFor($section->type);
             $this->assertSame($expectedAppearance, $section->appearance);

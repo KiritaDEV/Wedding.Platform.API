@@ -27,7 +27,7 @@ class WebsiteSectionResource extends JsonResource
             ? app(WebsiteTemplateRegistry::class)->get($this->website->template_key)
             : null;
 
-        $appearanceEnvelope = in_array($this->type, ['hero', 'blank'], true) ? $this->appearance : null;
+        $appearanceEnvelope = in_array($this->type, ['hero', 'gallery', 'blank'], true) ? $this->appearance : null;
         $appearance = $appearanceEnvelope['shared'] ?? $this->appearance;
         $designDefaults = is_array(($appearanceEnvelope ?? $appearance)['designDefaults'] ?? null) ? ($appearanceEnvelope ?? $appearance)['designDefaults'] : [];
         if ($appearanceEnvelope !== null) {
