@@ -181,7 +181,6 @@ class WebsiteElementValidatorTest extends TestCase
             'divider' => [['id' => 'divider-1', 'type' => 'divider', 'editorName' => 'Divider 1']],
             'quote' => [['id' => 'quote-1', 'type' => 'quote', 'text' => 'Always', 'attribution' => 'Us']],
             'cta' => [['id' => 'cta-1', 'type' => 'cta', 'label' => 'Respond', 'action' => ['type' => 'rsvp']]],
-            'media collection' => [['id' => 'collection-1', 'type' => 'mediaCollection', 'items' => [['id' => 'item-1', 'mediaId' => $mediaId]]]],
             'event date' => [['id' => 'date-1', 'type' => 'eventDate']],
             'event time' => [['id' => 'time-1', 'type' => 'eventTime']],
             'countdown' => [['id' => 'countdown-1', 'type' => 'countdown']],
@@ -291,28 +290,6 @@ class WebsiteElementValidatorTest extends TestCase
         $this->assertInvalid([...$base, 'action' => ['type' => 'rsvp', 'href' => '/rsvp']]);
         $this->assertInvalid([...$base, 'action' => ['type' => 'unknown']]);
         $this->assertInvalid([...$base, 'action' => ['type' => 'viewVenue']]);
-    }
-
-    public function test_media_collection_preserves_order_and_strictly_validates_items(): void
-    {
-        $first = (string) Str::ulid();
-        $second = (string) Str::ulid();
-        $element = ['id' => 'collection', 'type' => 'mediaCollection', 'items' => [
-            ['id' => 'first', 'mediaId' => $first],
-            ['id' => 'second', 'mediaId' => $second],
-        ]];
-
-        $this->assertSame($element, $this->validator->validate($element));
-        $this->assertSame(
-            ['id' => 'empty', 'type' => 'mediaCollection', 'items' => []],
-            $this->validator->validate(['id' => 'empty', 'type' => 'mediaCollection', 'items' => []]),
-        );
-        $this->assertInvalid([...$element, 'items' => [['id' => 'first', 'mediaId' => $first, 'caption' => 'No']]]);
-        $this->assertInvalid([...$element, 'items' => [['id' => 'first', 'mediaId' => 'bad']]]);
-        $this->assertTreeInvalid([[...$element, 'items' => [
-            ['id' => 'duplicate', 'mediaId' => $first],
-            ['id' => 'duplicate', 'mediaId' => $second],
-        ]]]);
     }
 
     public function test_media_enforces_accessibility_and_homogeneous_collections(): void

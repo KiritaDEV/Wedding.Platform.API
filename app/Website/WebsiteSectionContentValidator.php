@@ -37,7 +37,18 @@ final class WebsiteSectionContentValidator
         }
 
         $validated = Validator::make(['content' => $content], $rules)->validate()['content'];
-        if (in_array($sectionType, ['blank', 'hero'], true)) {
+        if ($sectionType === 'gallery') {
+            $ids = [];
+            foreach ($validated['semantic']['items'] as $index => $item) {
+                $id = trim($item['id']);
+                if (isset($ids[$id])) {
+                    throw ValidationException::withMessages(["content.semantic.items.{$index}.id" => 'Gallery item IDs must be unique.']);
+                }
+                $ids[$id] = true;
+                $validated['semantic']['items'][$index]['id'] = $id;
+            }
+        }
+        if (in_array($sectionType, ['blank', 'hero', 'gallery'], true)) {
             if (($validated['compositions']['custom'] ?? null) === []) {
                 unset($validated['compositions']['custom']);
             }
@@ -47,7 +58,8 @@ final class WebsiteSectionContentValidator
             }
             $allElements = [];
             foreach ($branches as $branch => $composition) {
-                $flow = $this->childFlows->validate($composition['childFlow'], $allowedElementTypes ?? ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup'], false);
+                $gallery = $sectionType === 'gallery';
+                $flow = $this->childFlows->validate($composition['childFlow'], $gallery ? ($allowedElementTypes ?? ['text', 'divider', 'compositionGroup']) : ($allowedElementTypes ?? ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup']), $gallery);
                 if ($branch === 'shared') {
                     $validated['compositions']['shared']['childFlow'] = $flow;
                 } else {
@@ -56,6 +68,19 @@ final class WebsiteSectionContentValidator
                 array_push($allElements, ...$flow['elements']);
             }
             $this->groups->assertUniqueTreeIds($allElements);
+            if ($sectionType === 'gallery') {
+                $assertGalleryType = function (array $element) use (&$assertGalleryType): void {
+                    if (! in_array($element['type'] ?? null, ['text', 'divider', 'compositionGroup'], true)) {
+                        throw ValidationException::withMessages(['content.compositions' => 'Gallery supports only Text, Divider, and Group content.']);
+                    }
+                    foreach ($element['children'] ?? [] as $child) {
+                        $assertGalleryType($child);
+                    }
+                };
+                foreach ($allElements as $element) {
+                    $assertGalleryType($element);
+                }
+            }
             $textElements = [];
             $collectText = function (array $element, string $path) use (&$collectText, &$textElements): void {
                 if (in_array(($element['type'] ?? null), ['text', 'date', 'divider'], true)) {
@@ -136,11 +161,17 @@ final class WebsiteSectionContentValidator
                 'description' => 5000,
                 'buttonLabel' => 100,
             ]),
-            'gallery' => [
-                'content' => ['required', 'array:semantic'],
-                'content.semantic' => ['required', 'array:heading,items'],
-                'content.semantic.heading' => ['present', 'nullable', 'string', 'max:255'],
-                'content.semantic.items' => ['present', 'array', 'size:0'],
+            'gallery' => [...$this->compositionEnvelopeRules(),
+                'content.semantic' => ['required', 'array:items'],
+                'content.semantic.items' => ['present', 'array', 'list', 'max:24'],
+                'content.semantic.items.*' => ['required', 'array:id,type,mediaId,focalPoint,zoom'],
+                'content.semantic.items.*.id' => ['required', 'string', 'max:255', 'not_regex:/^\s*$/'],
+                'content.semantic.items.*.type' => ['required', 'in:image'],
+                'content.semantic.items.*.mediaId' => ['required', 'string', 'ulid'],
+                'content.semantic.items.*.focalPoint' => ['sometimes', 'array:x,y'],
+                'content.semantic.items.*.focalPoint.x' => ['required_with:content.semantic.items.*.focalPoint', 'numeric', 'between:0,1'],
+                'content.semantic.items.*.focalPoint.y' => ['required_with:content.semantic.items.*.focalPoint', 'numeric', 'between:0,1'],
+                'content.semantic.items.*.zoom' => ['sometimes', 'numeric', 'between:1,3'],
             ],
             default => null,
         };

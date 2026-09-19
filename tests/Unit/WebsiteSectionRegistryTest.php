@@ -33,12 +33,12 @@ class WebsiteSectionRegistryTest extends TestCase
         }
     }
 
-    public function test_functional_section_defaults_have_one_semantic_owner_and_no_compositions(): void
+    public function test_functional_section_defaults_use_their_canonical_owners(): void
     {
         $registry = new WebsiteSectionRegistry;
-        $this->assertSame(['semantic' => ['heading' => '', 'items' => []]], $registry->get('gallery')->defaultContent);
+        $this->assertSame(['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]], $registry->get('gallery')->defaultContent);
         $this->assertSame(['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']], $registry->get('rsvp')->defaultContent);
-        $this->assertArrayNotHasKey('compositions', $registry->get('gallery')->defaultContent);
+        $this->assertArrayHasKey('compositions', $registry->get('gallery')->defaultContent);
         $this->assertArrayNotHasKey('compositions', $registry->get('rsvp')->defaultContent);
     }
 }

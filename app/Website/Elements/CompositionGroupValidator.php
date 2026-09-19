@@ -82,7 +82,7 @@ final class CompositionGroupValidator
                 throw ValidationException::withMessages(['elements' => "Element IDs must be unique within a section; duplicate [{$id}] found."]);
             }
             $seen[$id] = true;
-            if (in_array(($element['type'] ?? null), ['mediaCollection', 'media'], true)) {
+            if (($element['type'] ?? null) === 'media') {
                 foreach ($element['items'] as $item) {
                     $visit($item);
                 }

@@ -11,7 +11,7 @@ final class WebsiteSectionRegistry
     {
         return [
             'hero' => $this->definition('hero', 'Hero', 10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]),
-            'gallery' => $this->definition('gallery', 'Gallery', 70, ['semantic' => ['heading' => '', 'items' => []]]),
+            'gallery' => $this->definition('gallery', 'Gallery', 70, ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]]),
             'rsvp' => $this->definition('rsvp', 'RSVP', 90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]),
             'blank' => $this->definition('blank', 'Section', 100, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]], WebsiteSectionLifecycle::UserOwnedRepeatable),
         ];

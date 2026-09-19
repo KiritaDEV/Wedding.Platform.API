@@ -22,40 +22,14 @@ class WebsiteSectionDesignDefaultsTest extends TestCase
         $this->withHeaders(['Accept' => 'application/json', 'Origin' => 'http://localhost']);
     }
 
-    public function test_presentation_narrowing_preserves_hidden_intent_and_other_mutations(): void
+    public function test_hero_rejects_obsolete_section_design_defaults(): void
     {
         [$event, $owner, $project] = $this->project(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1);
         $hero = $project->sections()->where('type', 'hero')->sole();
-        $base = $this->base($event, $project);
         $url = $this->defaultsUrl($event, $project, $hero->id);
-        $appearance = $hero->appearance;
-        $appearance['presentation'] = 'editorial';
 
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/appearance", compact('appearance'))->assertOk();
-        $this->actingAs($owner)->putJson($url, ['designDefaults' => ['headingColorId' => 'ink-accent']])
-            ->assertOk()->assertJsonPath('data.sections.0.resolvedDesignContext.headingColorId', 'ink-accent');
-
-        $appearance['presentation'] = 'immersive';
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/appearance", compact('appearance'))
-            ->assertOk()
-            ->assertJsonPath('data.sections.0.designDefaults.headingColorId', 'ink-accent')
-            ->assertJsonPath('data.sections.0.resolvedDesignContext.headingColorId', 'ink-text');
-        $this->assertSame('ink-accent', $hero->refresh()->appearance['designDefaults']['headingColorId']);
-
-        $this->actingAs($owner)->putJson($url, ['designDefaults' => [
-            'headingColorId' => 'ink-accent',
-            'headingFontId' => 'fashion-serif',
-        ]])->assertOk()->assertJsonPath('data.sections.0.resolvedDesignContext.headingFontId', 'fashion-serif');
-
-        $this->actingAs($owner)->putJson($url, ['designDefaults' => ['headingColorId' => 'plum-accent']])->assertUnprocessable();
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}", ['content' => [
-            'headline' => 'Still preserved',
-            'subheadline' => '',
-        ]])->assertOk()->assertJsonPath('data.sections.0.designDefaults.headingColorId', 'ink-accent');
-
-        $appearance['presentation'] = 'editorial';
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/appearance", compact('appearance'))
-            ->assertOk()->assertJsonPath('data.sections.0.resolvedDesignContext.headingColorId', 'ink-accent');
+        $this->actingAs($owner)->putJson($url, ['designDefaults' => ['headingColorId' => 'ink-accent']])->assertUnprocessable();
+        $this->assertNull($hero->refresh()->design_defaults);
     }
 
     /** @return array{Event, User, Website} */

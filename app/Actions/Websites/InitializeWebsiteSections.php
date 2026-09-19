@@ -31,9 +31,10 @@ final class InitializeWebsiteSections
                     continue;
                 }
 
-                $content = $definition->key === 'hero'
-                    ? $this->initialHeroContent($website->event->name)
-                    : $definition->defaultContent;
+                $content = match ($definition->key) {
+                    'hero' => $this->initialHeroContent($website->event->name),
+                    default => $definition->defaultContent,
+                };
                 $rows[] = [
                     'id' => (string) Str::ulid(),
                     'website_id' => $website->getKey(),
@@ -60,7 +61,7 @@ final class InitializeWebsiteSections
 
     private function initialAppearance(string $sectionType, array $appearance): array
     {
-        return in_array($sectionType, ['hero', 'blank'], true) ? ['shared' => $appearance] : $appearance;
+        return in_array($sectionType, ['hero', 'gallery', 'blank'], true) ? ['shared' => $appearance] : $appearance;
     }
 
     /** @return array<string, mixed> */

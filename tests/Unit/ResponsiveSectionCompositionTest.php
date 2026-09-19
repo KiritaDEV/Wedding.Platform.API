@@ -41,12 +41,14 @@ class ResponsiveSectionCompositionTest extends TestCase
                 'people' => [['id' => 'person', 'name' => 'Alex', 'media' => ['assetId' => '01K00000000000000000000000']]],
             ]],
         ];
-        $content = ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [$people], 'order' => [['kind' => 'element', 'id' => 'people']]]], 'custom' => ['mobile' => ['childFlow' => ['elements' => [['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => [['id' => 'item', 'type' => 'image', 'mediaId' => '01K00000000000000000000000', 'alt' => 'Photo']]]], 'order' => [['kind' => 'element', 'id' => 'media']]]]]]];
+        $content = ['semantic' => ['items' => [['id' => 'gallery-item', 'type' => 'image', 'mediaId' => '01K00000000000000000000000']]], 'compositions' => ['shared' => ['childFlow' => ['elements' => [$people], 'order' => [['kind' => 'element', 'id' => 'people']]]], 'custom' => ['mobile' => ['childFlow' => ['elements' => [['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => [['id' => 'item', 'type' => 'image', 'mediaId' => '01K00000000000000000000000', 'alt' => 'Photo']]]], 'order' => [['kind' => 'element', 'id' => 'media']]]]]]];
         $copy = app(WebsiteElementIdentityRegenerator::class)->regenerateSectionContent($content);
         $this->assertNotSame('people', $copy['compositions']['shared']['childFlow']['elements'][0]['id']);
         $this->assertNotSame('group', $copy['compositions']['shared']['childFlow']['elements'][0]['groups'][0]['id']);
         $this->assertNotSame('person', $copy['compositions']['shared']['childFlow']['elements'][0]['groups'][0]['people'][0]['id']);
         $this->assertNotSame('item', $copy['compositions']['custom']['mobile']['childFlow']['elements'][0]['items'][0]['id']);
+        $this->assertNotSame('gallery-item', $copy['semantic']['items'][0]['id']);
+        $this->assertSame('01K00000000000000000000000', $copy['semantic']['items'][0]['mediaId']);
         $this->assertSame('01K00000000000000000000000', $copy['compositions']['custom']['mobile']['childFlow']['elements'][0]['items'][0]['mediaId']);
     }
 

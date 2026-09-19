@@ -71,16 +71,18 @@ class WebsiteProjectApiTest extends TestCase
         $base = "/api/events/{$event->id}/websites/{$project->id}";
         $hero = $project->sections()->where('type', 'hero')->sole();
 
-        $design = ['colorTheme' => 'ink', 'fontSet' => 'fashion', 'artStyle' => 'frame', 'projectDefaults' => []];
+        $design = ['colorTheme' => 'ink', 'fontSet' => 'fashion', 'artStyle' => 'frame', 'projectDefaults' => [], 'customColors' => []];
         $this->actingAs($owner)->putJson("{$base}/design", ['designSettings' => $design])
             ->assertOk()->assertJsonPath('data.designSettings', $design);
 
-        $content = ['headline' => 'Project-aware', 'subheadline' => 'Draft'];
+        $content = $hero->content;
+        $content['compositions']['shared']['childFlow']['elements'][0]['document']['children'][0]['children'][0]['text'] = 'Project-aware';
         $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}", ['content' => $content])
             ->assertOk();
         $this->assertSame($content, $hero->refresh()->content);
 
-        $appearance = [...WebsiteSectionAppearance::DEFAULT, 'headingAlignment' => 'right'];
+        $appearance = $hero->appearance;
+        $appearance['shared']['height'] = ['unit' => 'svh', 'value' => 75];
         $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/appearance", ['appearance' => $appearance])
             ->assertOk();
         $this->assertSame($appearance, $hero->refresh()->appearance);

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\WebsiteSection;
 use App\Website\WebsiteSectionContentValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -271,47 +272,125 @@ class WebsiteDraftApiTest extends TestCase
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $foreignContent])->assertUnprocessable();
     }
 
-    public function test_gallery_rejects_client_created_media_items_and_unknown_sections_are_not_editable(): void
+    public function test_gallery_accepts_canonical_images_and_rejects_legacy_shape_and_unknown_sections(): void
     {
         [$event, $owner] = $this->createEvent();
         $gallery = $event->website->sections()->where('type', 'gallery')->sole();
-        $legacy = WebsiteSection::factory()->for($event->website)->forType('customLegacySection')->create();
+        $asset = MediaAsset::query()->create(['event_id' => $event->id, 'created_by_user_id' => $owner->id, 'original_filename' => 'gallery.jpg', 'mime_type' => 'image/jpeg', 'extension' => 'jpg', 'width' => 1200, 'height' => 800, 'size_bytes' => 100, 'storage_disk' => 'local', 'original_path' => 'test/gallery.jpg']);
+        $asset->variants()->create(['variant_key' => 'web', 'mime_type' => 'image/webp', 'width' => 1200, 'height' => 800, 'size_bytes' => 80, 'storage_disk' => 'local', 'storage_path' => 'test/gallery.webp']);
+        $content = ['semantic' => ['items' => [['id' => 'photo-one', 'type' => 'image', 'mediaId' => $asset->id, 'focalPoint' => ['x' => .25, 'y' => .75], 'zoom' => 1.5]]], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]];
+
+        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
+        $this->assertSame($content, $gallery->refresh()->content);
 
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", [
             'content' => ['semantic' => ['heading' => '', 'items' => [['url' => 'https://example.test/image.jpg']]]],
-        ])->assertUnprocessable()->assertJsonValidationErrors('content.semantic.items');
+        ])->assertUnprocessable()->assertJsonValidationErrors('content.semantic');
 
+        $legacy = WebsiteSection::factory()->for($event->website)->forType('customLegacySection')->create();
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$legacy->id}", [
             'content' => [],
         ])->assertUnprocessable()->assertJsonValidationErrors('content');
     }
 
-    public function test_gallery_and_rsvp_remain_single_authoritative_semantic_records_without_device_compositions(): void
+    public function test_gallery_item_management_save_reload_sequence_preserves_composition_and_assets(): void
     {
         [$event, $owner] = $this->createEvent();
         $gallery = $event->website->sections()->where('type', 'gallery')->sole();
-        $rsvp = $event->website->sections()->where('type', 'rsvp')->sole();
-        $galleryContent = ['semantic' => ['heading' => 'Our moments', 'items' => []]];
-        $rsvpContent = ['semantic' => ['heading' => 'Will you join us?', 'description' => 'We hope you can celebrate with us.', 'buttonLabel' => 'RSVP']];
+        $assets = collect(['first', 'second'])->map(function (string $name) use ($event, $owner): MediaAsset {
+            $asset = MediaAsset::query()->create(['event_id' => $event->id, 'created_by_user_id' => $owner->id, 'original_filename' => "{$name}.jpg", 'mime_type' => 'image/jpeg', 'extension' => 'jpg', 'width' => 1200, 'height' => 800, 'size_bytes' => 100, 'storage_disk' => 'local', 'original_path' => "test/{$name}.jpg"]);
+            $asset->variants()->create(['variant_key' => 'web', 'mime_type' => 'image/webp', 'width' => 1200, 'height' => 800, 'size_bytes' => 80, 'storage_disk' => 'local', 'storage_path' => "test/{$name}.webp"]);
+
+            return $asset;
+        });
+        $compositions = $gallery->content['compositions'];
+        $saveReload = function (array $items) use ($event, $owner, $gallery, $compositions): array {
+            $content = ['semantic' => ['items' => $items], 'compositions' => $compositions];
+            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
+            $draft = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data');
+            $reloaded = collect($draft['sections'])->firstWhere('id', $gallery->id)['content'];
+            $this->assertSame($content, $reloaded);
+            foreach ($items as $item) {
+                $this->assertArrayHasKey($item['mediaId'], $draft['media']);
+            }
+
+            return $reloaded['semantic']['items'];
+        };
+        $first = ['id' => 'gallery-first', 'type' => 'image', 'mediaId' => $assets[0]->id, 'focalPoint' => ['x' => .2, 'y' => .8], 'zoom' => 1.5];
+        $second = ['id' => 'gallery-second', 'type' => 'image', 'mediaId' => $assets[1]->id];
+        $items = $saveReload([$first]);
+        $items[0]['focalPoint'] = ['x' => .125, 'y' => .875];
+        $items[0]['zoom'] = 2.3;
+        $items = $saveReload($items);
+        $this->assertSame(['x' => .125, 'y' => .875], $items[0]['focalPoint']);
+        $this->assertSame(2.3, $items[0]['zoom']);
+        unset($items[0]['focalPoint'], $items[0]['zoom']);
+        $items = $saveReload($items);
+        $this->assertArrayNotHasKey('focalPoint', $items[0]);
+        $this->assertArrayNotHasKey('zoom', $items[0]);
+        $items = $saveReload([$first]);
+        $items = $saveReload([...$items, $second]);
+        $items = $saveReload([$items[1], $items[0]]);
+        $duplicate = [...$items[1], 'id' => 'gallery-duplicate'];
+        $items = $saveReload([...$items, $duplicate]);
+        $items[1]['mediaId'] = $assets[1]->id;
+        unset($items[1]['focalPoint'], $items[1]['zoom']);
+        $items = $saveReload($items);
+        $this->assertSame($first['focalPoint'], $items[2]['focalPoint']);
+        $this->assertSame($first['zoom'], $items[2]['zoom']);
+        $items = $saveReload([$items[0], $items[2]]);
+        $saveReload([]);
+        foreach ($assets as $asset) {
+            $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
+        }
+    }
+
+    public function test_gallery_composition_has_one_specialized_reference_and_no_responsive_semantic_items(): void
+    {
+        [$event, $owner] = $this->createEvent();
+        $gallery = $event->website->sections()->where('type', 'gallery')->sole();
+        $galleryContent = ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]];
 
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $galleryContent])->assertOk();
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$rsvp->id}", ['content' => $rsvpContent])->assertOk();
         $this->assertSame($galleryContent, $gallery->refresh()->content);
-        $this->assertSame($rsvpContent, $rsvp->refresh()->content);
 
         foreach ([
-            [$gallery, [...$galleryContent, 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]],
-            [$rsvp, [...$rsvpContent, 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]],
-            [$gallery, ['semantic' => [...$galleryContent['semantic'], 'mobile' => ['items' => []]]]],
-            [$rsvp, ['semantic' => [...$rsvpContent['semantic'], 'desktop' => ['buttonLabel' => 'Respond']]]],
-        ] as [$section, $invalid]) {
-            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $invalid])->assertUnprocessable();
+            ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]],
+            ['semantic' => ['items' => [], 'mobile' => ['items' => []]], 'compositions' => $galleryContent['compositions']],
+            ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content'], ['kind' => 'specialized', 'key' => 'content']]]]]],
+        ] as $invalid) {
+            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $invalid])->assertUnprocessable();
         }
 
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}/enabled", ['isEnabled' => false])->assertOk();
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$rsvp->id}/enabled", ['isEnabled' => false])->assertOk();
         $this->assertSame($galleryContent, $gallery->refresh()->content);
-        $this->assertSame($rsvpContent, $rsvp->refresh()->content);
+    }
+
+    public function test_gallery_enforces_item_limit_canonical_shape_and_asset_ownership(): void
+    {
+        [$event, $owner] = $this->createEvent();
+        [$foreignEvent] = $this->createEvent();
+        $gallery = $event->website->sections()->where('type', 'gallery')->sole();
+        $asset = MediaAsset::query()->create(['event_id' => $event->id, 'created_by_user_id' => $owner->id, 'original_filename' => 'ours.jpg', 'mime_type' => 'image/jpeg', 'extension' => 'jpg', 'width' => 100, 'height' => 100, 'size_bytes' => 100, 'storage_disk' => 'local', 'original_path' => 'test/ours.jpg']);
+        $foreign = MediaAsset::query()->create(['event_id' => $foreignEvent->id, 'original_filename' => 'foreign.jpg', 'mime_type' => 'image/jpeg', 'extension' => 'jpg', 'width' => 100, 'height' => 100, 'size_bytes' => 100, 'storage_disk' => 'local', 'original_path' => 'test/foreign.jpg']);
+        $flow = ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]];
+        $make = fn (array $items): array => ['semantic' => ['items' => $items], 'compositions' => ['shared' => ['childFlow' => $flow]]];
+        $items = array_map(fn (int $index): array => ['id' => "item-{$index}", 'type' => 'image', 'mediaId' => $asset->id], range(1, 24));
+        $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
+
+        $this->actingAs($owner)->putJson($url, ['content' => $make($items)])->assertOk();
+        $tooMany = [...$items, [...$items[0], 'id' => 'item-25']];
+        $this->actingAs($owner)->putJson($url, ['content' => $make($tooMany)])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([$items[0], $items[0]])])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'alt' => 'Legacy']])])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'decorative' => true]])])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'caption' => 'Unsupported']])])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'mediaId' => $foreign->id]])])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'mediaId' => (string) Str::ulid()]])])->assertUnprocessable();
+        $badFocalPoint = [[...$items[0], 'focalPoint' => ['x' => 1.1, 'y' => .5]]];
+        $badZoom = [[...$items[0], 'zoom' => 3.1]];
+        $this->actingAs($owner)->putJson($url, ['content' => $make($badFocalPoint)])->assertUnprocessable();
+        $this->actingAs($owner)->putJson($url, ['content' => $make($badZoom)])->assertUnprocessable();
     }
 
     public function test_enable_disable_preserves_content_and_checks_template_capability(): void

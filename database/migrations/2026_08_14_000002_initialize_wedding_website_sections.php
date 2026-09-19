@@ -12,7 +12,7 @@ return new class extends Migration
     {
         $definitions = [
             'hero' => [10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]],
-            'gallery' => [70, ['semantic' => ['heading' => '', 'items' => []]]],
+            'gallery' => [70, ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]]],
             'rsvp' => [90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]],
         ];
 

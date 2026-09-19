@@ -15,7 +15,6 @@ enum WebsiteElementType: string
     case Divider = 'divider';
     case Quote = 'quote';
     case Cta = 'cta';
-    case MediaCollection = 'mediaCollection';
     case CompositionGroup = 'compositionGroup';
     case EventDate = 'eventDate';
     case EventTime = 'eventTime';

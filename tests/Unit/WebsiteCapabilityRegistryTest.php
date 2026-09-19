@@ -81,6 +81,16 @@ class WebsiteCapabilityRegistryTest extends TestCase
         $this->assertNull($resolver->section(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, 'people'));
     }
 
+    public function test_divider_capability_requires_active_template_artwork(): void
+    {
+        $resolver = app(WebsiteCapabilityResolver::class);
+
+        $this->assertContains('divider', $resolver->section(WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1, 'gallery')->allowedElementTypes);
+        $this->assertNotContains('divider', $resolver->section(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, 'gallery')->allowedElementTypes);
+        $this->assertTrue($resolver->allowsElement(WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1, 'gallery', 'divider'));
+        $this->assertFalse($resolver->allowsElement(WebsiteTemplateRegistry::MODERN_EDITORIAL_V1, 'gallery', 'divider'));
+    }
+
     public function test_all_canonical_sections_expose_truthful_decorative_frame_capabilities(): void
     {
         $resolver = app(WebsiteCapabilityResolver::class);

@@ -41,7 +41,7 @@ final class UpdateWebsiteSectionContent
             $allowedColorIds === null ? null : [...$allowedColorIds, ...$projectColorIds],
             $website->template_key,
         );
-        if ($enforceAppearancePairing && in_array($section->type, ['hero', 'blank'], true)) {
+        if ($enforceAppearancePairing && in_array($section->type, ['hero', 'gallery', 'blank'], true)) {
             $contentCustom = array_keys($validated['compositions']['custom'] ?? []);
             $appearanceCustom = array_keys($section->appearance['custom'] ?? []);
             sort($contentCustom);
@@ -60,7 +60,17 @@ final class UpdateWebsiteSectionContent
             throw ValidationException::withMessages(['content.media.assetId' => 'Select a valid image from this Event Media Library.']);
         }
         $nextItemReferences = $this->mediaReferences->extract($section->type, $validated, $section->appearance);
-        $currentReferences = $this->mediaReferences->extract($section->type, $section->content, $section->appearance);
+        if ($section->type === 'gallery') {
+            foreach ($validated['semantic']['items'] as $index => $item) {
+                if (! MediaAsset::query()->whereKey($item['mediaId'])->where('event_id', $website->event_id)
+                    ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->exists()) {
+                    $position = $index + 1;
+                    throw ValidationException::withMessages([
+                        "content.semantic.items.{$index}.mediaId" => "Gallery image {$position} is unavailable. Replace or delete it before saving.",
+                    ]);
+                }
+            }
+        }
         $assetIds = collect($nextItemReferences)->pluck('assetId')->unique()->values();
         if ($assetIds->isNotEmpty() && MediaAsset::query()->where('event_id', $website->event_id)->whereKey($assetIds)
             ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->count() !== $assetIds->count()) {

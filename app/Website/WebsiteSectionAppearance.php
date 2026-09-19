@@ -15,6 +15,9 @@ final class WebsiteSectionAppearance
         'mediaSpacing',
         'contentPosition',
         'innerSpacing',
+        'columns',
+        'gap',
+        'aspectRatio',
     ];
 
     public const DEFAULT = [

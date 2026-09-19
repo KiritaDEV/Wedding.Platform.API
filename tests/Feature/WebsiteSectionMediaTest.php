@@ -153,6 +153,51 @@ class WebsiteSectionMediaTest extends TestCase
         $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
+    public function test_gallery_references_block_asset_deletion_until_items_are_removed(): void
+    {
+        [$owner, $event] = $this->eventFor(EventMembershipRole::Owner);
+        $gallery = $this->initializeWebsite($event)->sections()->where('type', 'gallery')->sole();
+        $asset = $this->assetFor($event);
+        $flow = ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]];
+        $content = ['semantic' => ['items' => [
+            ['id' => 'one', 'type' => 'image', 'mediaId' => $asset->id],
+            ['id' => 'two', 'type' => 'image', 'mediaId' => $asset->id],
+        ]], 'compositions' => ['shared' => ['childFlow' => $flow]]];
+        $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
+
+        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $draft = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk();
+        $this->assertArrayHasKey($asset->id, $draft->json('data.media'));
+        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
+
+        $content['semantic']['items'] = [];
+        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
+        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+    }
+
+    public function test_missing_gallery_asset_error_identifies_the_item_and_required_recovery(): void
+    {
+        [$owner, $event] = $this->eventFor(EventMembershipRole::Owner);
+        $gallery = $this->initializeWebsite($event)->sections()->where('type', 'gallery')->sole();
+        $valid = $this->assetFor($event);
+        $missing = (string) Str::ulid();
+        $flow = ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]];
+        $content = ['semantic' => ['items' => [
+            ['id' => 'valid', 'type' => 'image', 'mediaId' => $valid->id],
+            ['id' => 'missing', 'type' => 'image', 'mediaId' => $missing],
+        ]], 'compositions' => ['shared' => ['childFlow' => $flow]]];
+        $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
+
+        $response = $this->actingAs($owner)->putJson($url, compact('content'))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['content.semantic.items.1.mediaId']);
+        $this->assertSame('Gallery image 2 is unavailable. Replace or delete it before saving.', $response->json('errors')['content.semantic.items.1.mediaId'][0]);
+
+        $content['semantic']['items'] = [$content['semantic']['items'][0]];
+        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+    }
+
     public function test_group_background_media_round_trips_blocks_deletion_and_rejects_unavailable_assets(): void
     {
         [$owner, $event] = $this->eventFor(EventMembershipRole::Owner);

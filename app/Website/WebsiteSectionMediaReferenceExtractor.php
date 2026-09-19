@@ -11,6 +11,7 @@ final class WebsiteSectionMediaReferenceExtractor
     {
         $references = match ($sectionType) {
             'hero' => $this->sectionMedia($appearance),
+            'gallery' => $this->gallery($content),
             default => [],
         };
         foreach ($this->compositions->persisted($content) as $branch) {
@@ -67,6 +68,22 @@ final class WebsiteSectionMediaReferenceExtractor
             foreach (BackgroundMedia::assetIds(is_array($branch) ? ($branch['backgroundMedia'] ?? null) : null) as $mediaId) {
                 $references[] = ['mediaId' => $mediaId, 'reference' => ['type' => 'sectionMedia', 'appearanceScope' => 'appearance/'.$scope]];
             }
+        }
+
+        return $references;
+    }
+
+    private function gallery(array $content): array
+    {
+        $references = [];
+        foreach (is_array($content['semantic']['items'] ?? null) ? $content['semantic']['items'] : [] as $item) {
+            if (! is_array($item) || ! is_string($item['mediaId'] ?? null)) {
+                continue;
+            }
+            $references[] = ['mediaId' => $item['mediaId'], 'reference' => array_filter([
+                'type' => 'sectionMedia',
+                'itemId' => is_string($item['id'] ?? null) ? $item['id'] : '',
+            ], fn (string $value): bool => $value !== '')];
         }
 
         return $references;

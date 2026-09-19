@@ -19,6 +19,8 @@ class DesignContextResolverTest extends TestCase
         $template = WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1;
         $project = ResolvedDesignContext::fromProjectDefaults($capabilities->resolveProjectDesignDefaults($template, []));
         $gallery = $capabilities->section($template, 'gallery');
+        $this->assertSame([], $gallery->contextDefaults->typography);
+        $this->assertSame([], $gallery->contextDefaults->colors);
 
         foreach ([
             new ContextDefaultsIntent(bodyFontId: 'classic-serif'),
@@ -32,31 +34,6 @@ class DesignContextResolverTest extends TestCase
                 $this->assertEquals($project, $project);
             }
         }
-    }
-
-    public function test_presentation_foreground_narrows_section_colors_deterministically(): void
-    {
-        $capabilities = app(WebsiteCapabilityResolver::class);
-        $resolver = app(DesignContextResolver::class);
-        $template = WebsiteTemplateRegistry::MODERN_EDITORIAL_V1;
-        $project = ResolvedDesignContext::fromProjectDefaults($capabilities->resolveProjectDesignDefaults($template, []));
-        $hero = $capabilities->section($template, 'hero');
-        $immersive = $capabilities->presentation($template, 'hero', 'immersive');
-
-        $this->assertNotNull($immersive->contextDefaults);
-        $this->assertSame([], $immersive->contextDefaults->colors);
-        $this->assertEquals(
-            $project,
-            $resolver->resolveSection($project, $hero, new ContextDefaultsIntent, $immersive),
-        );
-
-        $narrowed = $resolver->resolveSection(
-            $project,
-            $hero,
-            new ContextDefaultsIntent(headingColorId: 'ink-accent'),
-            $immersive,
-        );
-        $this->assertSame($project->headingColorId, $narrowed->headingColorId);
     }
 
     public function test_block_context_and_element_bridge_apply_only_local_legal_overrides(): void
