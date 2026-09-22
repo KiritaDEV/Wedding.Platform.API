@@ -79,4 +79,19 @@ class Event extends Model
     {
         return $this->hasMany(MediaAsset::class);
     }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(Invitation::class);
+    }
+
+    public function guests(): HasMany
+    {
+        return $this->hasMany(Guest::class);
+    }
+
+    public function customWeddingRoles(): HasMany
+    {
+        return $this->hasMany(WeddingRole::class);
+    }
 }

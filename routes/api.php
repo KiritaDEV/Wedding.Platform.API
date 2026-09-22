@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MediaAssetController;
 use App\Http\Controllers\TimeZoneController;
 use App\Http\Controllers\WebsiteDraftController;
+use App\Http\Controllers\WeddingRoleController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -23,6 +25,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events/{event}', [EventController::class, 'show']);
     Route::put('/events/{event}/timing', [EventController::class, 'updateTiming']);
     Route::get('/time-zones', [TimeZoneController::class, 'index']);
+
+    Route::get('/events/{event}/invitations', [InvitationController::class, 'index']);
+    Route::get('/events/{event}/invitation-options', [InvitationController::class, 'options']);
+    Route::get('/events/{event}/wedding-roles', [WeddingRoleController::class, 'index']);
+    Route::post('/events/{event}/invitations', [InvitationController::class, 'store']);
+    Route::get('/events/{event}/invitations/{invitation}', [InvitationController::class, 'show']);
+    Route::put('/events/{event}/invitations/{invitation}', [InvitationController::class, 'update']);
+    Route::post('/events/{event}/invitations/{invitation}/activate', [InvitationController::class, 'activate']);
+    Route::post('/events/{event}/invitations/{invitation}/deactivate', [InvitationController::class, 'deactivate']);
+    Route::post('/events/{event}/invitations/{sourceInvitation}/guests/{guest}/move', [InvitationController::class, 'move']);
+    Route::delete('/events/{event}/invitations/{invitation}', [InvitationController::class, 'destroy']);
 
     Route::get('/events/{event}/media', [MediaAssetController::class, 'index']);
     Route::post('/events/{event}/media', [MediaAssetController::class, 'store']);
