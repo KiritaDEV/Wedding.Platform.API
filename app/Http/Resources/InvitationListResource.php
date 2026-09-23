@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\GuestStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,7 +11,7 @@ class InvitationListResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $guestCount = $this->guests->count();
+        $guestCount = $this->guests->where('status', GuestStatus::Active)->count();
 
         return [
             'id' => $this->id,
@@ -17,13 +19,10 @@ class InvitationListResource extends JsonResource
             'effectiveName' => $this->effectiveName(),
             'status' => $this->status->value,
             'guestCount' => $guestCount,
-            'rsvp' => [
-                'status' => 'pending',
-                'attending' => 0,
-                'declined' => 0,
-                'pending' => $guestCount,
-            ],
-            'lastResponse' => null,
+            'totalGuestCount' => $this->guests->count(),
+            'rsvp' => $this->rsvpSummary(),
+            'lastResponse' => $this->rsvp_submissions_max_created_at === null ? null : CarbonImmutable::parse($this->rsvp_submissions_max_created_at)->toISOString(),
+            'canPermanentlyDelete' => $this->canPermanentlyDelete(),
             'guests' => InvitationListGuestResource::collection($this->guests),
             'createdAt' => $this->created_at?->toISOString(),
         ];

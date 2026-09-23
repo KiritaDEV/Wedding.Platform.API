@@ -8,17 +8,21 @@ use App\Actions\Invitations\ListInvitations;
 use App\Actions\Invitations\MoveGuest;
 use App\Actions\Invitations\SetInvitationStatus;
 use App\Actions\Invitations\UpdateInvitation;
+use App\Actions\Invitations\UpdateInvitationRsvp;
 use App\Enums\InvitationStatus;
 use App\Http\Requests\InvitationListRequest;
 use App\Http\Requests\MoveGuestRequest;
 use App\Http\Requests\StoreInvitationRequest;
 use App\Http\Requests\UpdateInvitationRequest;
+use App\Http\Requests\UpdateInvitationRsvpRequest;
 use App\Http\Resources\GuestResource;
 use App\Http\Resources\InvitationListResource;
 use App\Http\Resources\InvitationOptionResource;
 use App\Http\Resources\InvitationResource;
+use App\Http\Resources\RsvpSubmissionResource;
 use App\Models\Event;
 use App\Models\Invitation;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -30,7 +34,7 @@ class InvitationController extends Controller
     public function options(string $event): AnonymousResourceCollection
     {
         $invitations = $this->authorizedEvent($event)->invitations()
-            ->with('guests')->withCount('guests')->get()
+            ->with('guests')->withCount(['guests as guests_count' => fn ($query) => $query->where('status', 'active')])->get()
             ->sort(fn (Invitation $left, Invitation $right): int => strcasecmp($left->effectiveName(), $right->effectiveName()) ?: strcmp($left->id, $right->id))
             ->values();
 
@@ -59,7 +63,11 @@ class InvitationController extends Controller
 
     public function show(Request $request, string $event, string $invitation): InvitationResource
     {
-        return new InvitationResource($this->invitation($this->authorizedEvent($event), $invitation)->load('guests.weddingRoles'));
+        $model = $this->invitation($this->authorizedEvent($event), $invitation)
+            ->load(['guests' => fn ($query) => $query->with('weddingRoles')->withExists('rsvpSubmissionItems')])
+            ->loadExists('rsvpSubmissions')->loadMax('rsvpSubmissions', 'created_at');
+
+        return new InvitationResource($model);
     }
 
     public function store(StoreInvitationRequest $request, CreateInvitation $create, string $event): JsonResponse
@@ -77,8 +85,33 @@ class InvitationController extends Controller
         $state = $request->invitationState();
 
         return new InvitationResource($update->handle(
-            $this->invitation($eventModel, $invitation), $state['guests'], $state['custom_name'], $state['custom_roles'],
+            $this->invitation($eventModel, $invitation), $state['guests'], $state['custom_name'], $state['custom_roles'], $state['deleted_guest_ids'],
         ));
+    }
+
+    public function updateRsvp(UpdateInvitationRsvpRequest $request, UpdateInvitationRsvp $update, string $event, string $invitation): JsonResponse
+    {
+        $eventModel = $this->authorizedEvent($event, 'update');
+        $state = $request->desiredState();
+        $result = $update->handle($this->invitation($eventModel, $invitation), $request->user(), $state['responses'], $state['note']);
+        $invitationModel = $result['invitation'];
+
+        return response()->json(['data' => [
+            'changed' => $result['changed'],
+            'rsvp' => $invitationModel->rsvpSummary(),
+            'guests' => GuestResource::collection($invitationModel->guests)->resolve($request),
+            'submission' => $result['submission'] ? (new RsvpSubmissionResource($result['submission']))->resolve($request) : null,
+            'lastResponse' => $invitationModel->rsvp_submissions_max_created_at === null ? null : CarbonImmutable::parse($invitationModel->rsvp_submissions_max_created_at)->toISOString(),
+        ]]);
+    }
+
+    public function rsvpHistory(Request $request, string $event, string $invitation): AnonymousResourceCollection
+    {
+        $eventModel = $this->authorizedEvent($event);
+        $submissions = $this->invitation($eventModel, $invitation)->rsvpSubmissions()
+            ->with('items')->orderByDesc('created_at')->orderByDesc('id')->paginate(25);
+
+        return RsvpSubmissionResource::collection($submissions);
     }
 
     public function activate(SetInvitationStatus $setStatus, string $event, string $invitation): InvitationResource

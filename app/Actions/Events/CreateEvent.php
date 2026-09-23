@@ -20,6 +20,9 @@ class CreateEvent
         return DB::transaction(function () use ($creator, $attributes): Event {
             $attributes['type'] ??= EventType::Wedding;
             $attributes['status'] ??= EventStatus::Active;
+            // HTTP creation requires the browser's IANA zone. UTC keeps internal
+            // callers and migration-era tooling canonical rather than timezone-less.
+            $attributes['time_zone'] ??= 'UTC';
             $attributes['slug'] = $this->uniqueSlug($attributes['slug'] ?? $attributes['name']);
 
             $event = Event::query()->create($attributes);
@@ -29,7 +32,7 @@ class CreateEvent
                 'role' => EventMembershipRole::Owner,
             ]);
 
-            return $event;
+            return $event->refresh();
         });
     }
 

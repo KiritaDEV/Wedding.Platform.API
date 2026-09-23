@@ -8,9 +8,11 @@ use App\Actions\Websites\CreateWebsiteSection;
 use App\Actions\Websites\DeleteWebsiteSection;
 use App\Actions\Websites\DuplicateWebsiteSection;
 use App\Actions\Websites\InitializeEventWebsite;
+use App\Actions\Websites\PublishWebsite;
 use App\Actions\Websites\RenameWebsiteSection;
 use App\Actions\Websites\ReorderWebsiteSections;
 use App\Actions\Websites\SetWebsiteSectionEnabled;
+use App\Actions\Websites\UnpublishWebsite;
 use App\Actions\Websites\UpdateWebsiteDesignSettings;
 use App\Actions\Websites\UpdateWebsiteSectionAppearance;
 use App\Actions\Websites\UpdateWebsiteSectionContent;
@@ -55,8 +57,23 @@ class WebsiteDraftController extends Controller
         $eventModel = $this->authorizedEvent($event);
 
         return WebsiteProjectResource::collection(
-            $eventModel->websiteProjects()->orderBy('created_at')->orderBy('id')->get(),
+            $eventModel->websiteProjects()->with('event')->orderBy('created_at')->orderBy('id')->get(),
         );
+    }
+
+    public function publish(PublishWebsite $publish, string $event, string $website): WebsiteProjectResource
+    {
+        $eventModel = $this->authorizedEvent($event, 'update');
+
+        return new WebsiteProjectResource($publish->handle($eventModel, $this->website($eventModel, $website))->load('event'));
+    }
+
+    public function unpublish(UnpublishWebsite $unpublish, string $event): JsonResponse
+    {
+        $eventModel = $this->authorizedEvent($event, 'update');
+        $unpublish->handle($eventModel);
+
+        return response()->json(['data' => ['publishedWebsiteId' => null]]);
     }
 
     public function storeProject(

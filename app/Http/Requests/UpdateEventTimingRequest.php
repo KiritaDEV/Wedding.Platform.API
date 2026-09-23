@@ -20,7 +20,7 @@ class UpdateEventTimingRequest extends FormRequest
         return [
             'eventDate' => ['present', 'nullable', 'date_format:Y-m-d'],
             'startTime' => ['present', 'nullable', 'date_format:H:i'],
-            'timeZone' => ['present', 'nullable', new IanaTimeZone],
+            'timeZone' => ['required', 'string', new IanaTimeZone],
         ];
     }
 

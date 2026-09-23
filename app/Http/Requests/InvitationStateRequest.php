@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\GuestRelationship;
 use App\Enums\GuestSide;
+use App\Enums\GuestStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -25,8 +26,8 @@ abstract class InvitationStateRequest extends FormRequest
             'customRoles.*' => ['required', 'array:clientKey,name'],
             'customRoles.*.clientKey' => ['required', 'string', 'max:100', 'distinct'],
             'customRoles.*.name' => ['required', 'string', 'max:255'],
-            'guests' => ['required', 'array', 'list', 'min:1'],
-            'guests.*' => ['required', 'array:'.($this->allowsExistingGuests() ? 'id,' : '').'firstName,lastName,relationship,side,weddingRoleIds,customWeddingRoleKeys'],
+            'guests' => ['required', 'array', 'list'],
+            'guests.*' => ['required', 'array:'.($this->allowsExistingGuests() ? 'id,' : '').'status,firstName,lastName,relationship,side,weddingRoleIds,customWeddingRoleKeys'],
             'guests.*.id' => [$this->allowsExistingGuests() ? 'sometimes' : 'prohibited', 'string', 'ulid', 'distinct'],
             'guests.*.firstName' => ['required', 'string', 'max:255'],
             'guests.*.lastName' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -36,6 +37,9 @@ abstract class InvitationStateRequest extends FormRequest
             'guests.*.weddingRoleIds.*' => ['required', 'string', 'ulid'],
             'guests.*.customWeddingRoleKeys' => ['sometimes', 'array', 'list'],
             'guests.*.customWeddingRoleKeys.*' => ['required', 'string', 'max:100'],
+            'guests.*.status' => ['sometimes', Rule::enum(GuestStatus::class)],
+            'deletedGuestIds' => [$this->allowsExistingGuests() ? 'sometimes' : 'prohibited', 'array', 'list'],
+            'deletedGuestIds.*' => ['required', 'string', 'ulid', 'distinct'],
         ];
     }
 
@@ -64,9 +68,11 @@ abstract class InvitationStateRequest extends FormRequest
                 'last_name' => $guest['lastName'] ?? null,
                 'relationship' => $guest['relationship'] ?? GuestRelationship::GuestOther->value,
                 'side' => $guest['side'] ?? GuestSide::Unspecified->value,
+                'status' => $guest['status'] ?? GuestStatus::Active->value,
                 'wedding_role_ids' => $guest['weddingRoleIds'] ?? [],
                 'custom_wedding_role_keys' => $guest['customWeddingRoleKeys'] ?? [],
             ])->all(),
+            'deleted_guest_ids' => $this->validated('deletedGuestIds', []),
         ];
     }
 }

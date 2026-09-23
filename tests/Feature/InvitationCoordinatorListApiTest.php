@@ -55,12 +55,44 @@ class InvitationCoordinatorListApiTest extends TestCase
 
         $activeRow = collect($response->json('data'))->firstWhere('id', $active->id);
         $this->assertSame(2, $activeRow['guestCount']);
-        $this->assertSame(['status' => 'pending', 'attending' => 0, 'declined' => 0, 'pending' => 2], $activeRow['rsvp']);
+        $this->assertSame(2, $activeRow['totalGuestCount']);
+        $this->assertSame(['status' => 'pending', 'attendingCount' => 0, 'declinedCount' => 0, 'pendingCount' => 2], $activeRow['rsvp']);
         $this->assertNull($activeRow['lastResponse']);
+        $this->assertNull($activeRow['guests'][0]['rsvpResponse']);
         $this->assertSame('pending', $activeRow['guests'][0]['rsvpStatus']);
         $this->assertCount(2, $activeRow['guests'][0]['weddingRoles']);
         $this->assertArrayNotHasKey('normalizedFirstName', $activeRow['guests'][0]);
         $this->assertArrayNotHasKey('scopeKey', $activeRow['guests'][0]['weddingRoles'][0]);
+    }
+
+    public function test_management_heading_count_is_total_while_names_rsvp_and_event_summary_remain_active_only(): void
+    {
+        [$event, $owner] = $this->eventMember(EventMembershipRole::Owner);
+        $twoActive = app(CreateInvitation::class)->handle($event, [['first_name' => 'Tony'], ['first_name' => 'Steve']]);
+        $fourRetained = app(CreateInvitation::class)->handle($event, [
+            ['first_name' => 'Yelena'], ['first_name' => 'John'], ['first_name' => 'James'], ['first_name' => 'Bucky'],
+        ], 'Avengers');
+        $threeRetained = app(CreateInvitation::class)->handle($event, [
+            ['first_name' => 'Active'], ['first_name' => 'Inactive One'], ['first_name' => 'Inactive Two'],
+        ]);
+        $fourRetained->guests[0]->update(['rsvp_response' => 'declined']);
+        $fourRetained->guests[3]->update(['status' => 'inactive']);
+        $threeRetained->guests[0]->update(['rsvp_response' => 'attending']);
+        $threeRetained->guests[1]->update(['status' => 'inactive']);
+        $threeRetained->guests[2]->update(['status' => 'inactive']);
+
+        $response = $this->actingAs($owner)->getJson("/api/events/{$event->id}/invitations")->assertOk();
+        $rows = collect($response->json('data'))->keyBy('id');
+
+        $this->assertSame(2, $rows[$twoActive->id]['totalGuestCount']);
+        $this->assertSame(4, $rows[$fourRetained->id]['totalGuestCount']);
+        $this->assertSame(3, $rows[$fourRetained->id]['guestCount']);
+        $this->assertSame(['status' => 'partial', 'attendingCount' => 0, 'declinedCount' => 1, 'pendingCount' => 2], $rows[$fourRetained->id]['rsvp']);
+        $this->assertSame(['status' => 'complete', 'attendingCount' => 1, 'declinedCount' => 0, 'pendingCount' => 0], $rows[$threeRetained->id]['rsvp']);
+        $this->assertSame(3, $rows[$threeRetained->id]['totalGuestCount']);
+        $this->assertSame(1, $rows[$threeRetained->id]['guestCount']);
+        $this->assertSame('Active', $rows[$threeRetained->id]['effectiveName']);
+        $this->assertSame(6, $response->json('meta.summary.guests'));
     }
 
     public function test_search_matches_custom_name_guest_names_and_assigned_builtin_or_custom_roles_only(): void

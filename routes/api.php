@@ -4,8 +4,13 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MediaAssetController;
+use App\Http\Controllers\PublicEventSiteController;
 use App\Http\Controllers\TimeZoneController;
 use App\Http\Controllers\WebsiteDraftController;
+
+Route::get('/public/events/{slug}/site', [PublicEventSiteController::class, 'show']);
+Route::get('/public/events/{slug}/media/{asset}/web', [PublicEventSiteController::class, 'media'])
+    ->name('public.events.media.web');
 use App\Http\Controllers\WeddingRoleController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events', [EventController::class, 'store']);
     Route::get('/events/{event}', [EventController::class, 'show']);
     Route::put('/events/{event}/timing', [EventController::class, 'updateTiming']);
+    Route::put('/events/{event}/rsvp-settings', [EventController::class, 'updateRsvpSettings']);
     Route::get('/time-zones', [TimeZoneController::class, 'index']);
 
     Route::get('/events/{event}/invitations', [InvitationController::class, 'index']);
@@ -32,6 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events/{event}/invitations', [InvitationController::class, 'store']);
     Route::get('/events/{event}/invitations/{invitation}', [InvitationController::class, 'show']);
     Route::put('/events/{event}/invitations/{invitation}', [InvitationController::class, 'update']);
+    Route::put('/events/{event}/invitations/{invitation}/rsvp', [InvitationController::class, 'updateRsvp']);
+    Route::get('/events/{event}/invitations/{invitation}/rsvp-history', [InvitationController::class, 'rsvpHistory']);
     Route::post('/events/{event}/invitations/{invitation}/activate', [InvitationController::class, 'activate']);
     Route::post('/events/{event}/invitations/{invitation}/deactivate', [InvitationController::class, 'deactivate']);
     Route::post('/events/{event}/invitations/{sourceInvitation}/guests/{guest}/move', [InvitationController::class, 'move']);
@@ -60,6 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/events/{event}/websites', [WebsiteDraftController::class, 'projects']);
     Route::post('/events/{event}/websites', [WebsiteDraftController::class, 'storeProject']);
+    Route::post('/events/{event}/websites/{website}/publish', [WebsiteDraftController::class, 'publish']);
+    Route::delete('/events/{event}/published-website', [WebsiteDraftController::class, 'unpublish']);
     Route::get('/events/{event}/websites/{website}', [WebsiteDraftController::class, 'showProject']);
     Route::post('/events/{event}/websites/{website}/colors', [WebsiteDraftController::class, 'addProjectColor']);
     Route::put('/events/{event}/websites/{website}/design', [WebsiteDraftController::class, 'updateProjectDesign']);

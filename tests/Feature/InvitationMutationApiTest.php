@@ -35,8 +35,8 @@ class InvitationMutationApiTest extends TestCase
             'customName' => ' Ceremony Party ',
             'customRoles' => [['clientKey' => 'reader', 'name' => 'Reader']],
             'guests' => [
-                ['firstName' => 'Ana', 'lastName' => 'Cruz', 'relationship' => 'friend', 'side' => 'bride', 'weddingRoleIds' => [$bridesmaid->id], 'customWeddingRoleKeys' => ['reader']],
-                ['firstName' => 'Pedro', 'weddingRoleIds' => [$custom->id], 'customWeddingRoleKeys' => ['reader']],
+                ['firstName' => 'Ana', 'lastName' => 'Cruz', 'relationship' => 'friend', 'side' => 'bride', 'status' => 'active', 'weddingRoleIds' => [$bridesmaid->id], 'customWeddingRoleKeys' => ['reader']],
+                ['firstName' => 'Pedro', 'status' => 'active', 'weddingRoleIds' => [$custom->id], 'customWeddingRoleKeys' => ['reader']],
             ],
         ])->assertCreated()
             ->assertJsonPath('data.customName', 'Ceremony Party')
@@ -88,6 +88,7 @@ class InvitationMutationApiTest extends TestCase
             ['first_name' => 'Ana'], ['first_name' => 'Remove Me'],
         ], 'Old');
         $ana = $invitation->guests->firstWhere('first_name', 'Ana');
+        $removed = $invitation->guests->firstWhere('first_name', 'Remove Me');
         $oldRole = WeddingRole::query()->where('key', 'bridesmaid')->firstOrFail();
         app(AssignWeddingRole::class)->handle($ana, $oldRole);
         $reader = app(CreateCustomWeddingRole::class)->handle($event, 'Reader');
@@ -98,6 +99,7 @@ class InvitationMutationApiTest extends TestCase
                 ['clientKey' => 'reader-stale', 'name' => ' reader '],
                 ['clientKey' => 'lector', 'name' => 'Lector'],
             ],
+            'deletedGuestIds' => [$removed->id],
             'guests' => [
                 ['id' => $ana->id, 'firstName' => 'Ana Maria', 'relationship' => 'family_member', 'side' => 'both', 'customWeddingRoleKeys' => ['reader-stale', 'lector']],
                 ['firstName' => 'Pedro', 'relationship' => 'colleague', 'side' => 'groom', 'customWeddingRoleKeys' => ['lector']],

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Invitations;
 
+use App\Enums\GuestStatus;
 use App\Models\Guest;
 use App\Models\Invitation;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +28,9 @@ final class MoveGuest
             if ($guest === null) {
                 throw ValidationException::withMessages(['guest' => 'The Guest does not belong to the source Invitation.']);
             }
-            if ($source->guests()->lockForUpdate()->count() <= 1) {
-                throw ValidationException::withMessages(['guest' => 'The final Guest cannot be moved out of an Invitation.']);
+            $activeGuests = $source->guests()->where('status', GuestStatus::Active->value)->lockForUpdate()->count();
+            if ($guest->status === GuestStatus::Active && $activeGuests <= 1) {
+                throw ValidationException::withMessages(['guest' => 'The final active Guest cannot be moved out of an Invitation.']);
             }
 
             $guest->invitation_id = $destination->id;

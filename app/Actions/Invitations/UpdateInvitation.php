@@ -4,6 +4,7 @@ namespace App\Actions\Invitations;
 
 use App\Enums\GuestRelationship;
 use App\Enums\GuestSide;
+use App\Enums\GuestStatus;
 use App\Invitations\NameNormalizer;
 use App\Models\Invitation;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -16,20 +17,39 @@ final class UpdateInvitation
      * @param  list<array{id?: string, first_name: string, last_name?: ?string, relationship?: GuestRelationship|string, side?: GuestSide|string, wedding_role_ids?: list<string>, custom_wedding_role_keys?: list<string>}>  $guests
      * @param  list<array{client_key: string, name: string}>  $customRoles
      */
-    public function handle(Invitation $invitation, array $guests, ?string $customName, array $customRoles = []): Invitation
+    public function handle(Invitation $invitation, array $guests, ?string $customName, array $customRoles = [], array $deletedGuestIds = []): Invitation
     {
-        if ($guests === []) {
-            throw ValidationException::withMessages(['guests' => 'An Invitation must contain at least one Guest.']);
-        }
-
         try {
-            return DB::transaction(function () use ($invitation, $guests, $customName, $customRoles): Invitation {
+            return DB::transaction(function () use ($invitation, $guests, $customName, $customRoles, $deletedGuestIds): Invitation {
                 $invitation = Invitation::query()->whereKey($invitation->id)->lockForUpdate()->firstOrFail();
                 $current = $invitation->guests()->lockForUpdate()->get()->keyBy('id');
                 $submittedIds = collect($guests)->pluck('id')->filter()->values();
                 if ($submittedIds->unique()->count() !== $submittedIds->count()
                     || $submittedIds->contains(fn ($id) => ! $current->has($id))) {
                     throw ValidationException::withMessages(['guests' => 'An existing Guest does not belong to this Invitation.']);
+                }
+                $deletedIds = collect($deletedGuestIds);
+                if ($deletedIds->unique()->count() !== $deletedIds->count()
+                    || $deletedIds->contains(fn ($id) => ! $current->has($id))
+                    || $deletedIds->intersect($submittedIds)->isNotEmpty()) {
+                    throw ValidationException::withMessages(['deletedGuestIds' => 'A Guest selected for deletion is invalid.']);
+                }
+                if ($deletedIds->isNotEmpty() && ($current->whereIn('id', $deletedIds)->contains(fn ($guest) => $guest->rsvp_response !== null)
+                    || DB::table('rsvp_submission_items')->whereIn('guest_id', $deletedIds)->exists())) {
+                    throw ValidationException::withMessages(['deletedGuestIds' => 'A Guest with RSVP participation cannot be permanently deleted. Deactivate the Guest instead.']);
+                }
+
+                $finalStatuses = $current->reject(fn ($guest) => $deletedIds->contains($guest->id))
+                    ->mapWithKeys(fn ($guest) => [$guest->id => $guest->status]);
+                foreach ($guests as $guest) {
+                    if (isset($guest['id'])) {
+                        $finalStatuses[$guest['id']] = GuestStatus::from($guest['status'] ?? GuestStatus::Active->value);
+                    } else {
+                        $finalStatuses[] = GuestStatus::Active;
+                    }
+                }
+                if ($finalStatuses->filter(fn ($status) => $status === GuestStatus::Active)->isEmpty()) {
+                    throw ValidationException::withMessages(['guests' => 'An Invitation must contain at least one active Guest.']);
                 }
 
                 $identities = collect($guests)->map(fn ($guest) => [
@@ -54,7 +74,7 @@ final class UpdateInvitation
                 );
 
                 $invitation->update(['custom_name' => $customName]);
-                $invitation->guests()->whereNotIn('id', $submittedIds)->delete();
+                $invitation->guests()->whereIn('id', $deletedIds)->delete();
                 foreach ($current->whereIn('id', $submittedIds)->keys() as $id) {
                     DB::table('guests')->where('id', $id)->update([
                         'normalized_first_name' => '__editing__'.$id,
@@ -69,6 +89,7 @@ final class UpdateInvitation
                     $guest->last_name = $attributes['last_name'] ?? null;
                     $guest->relationship = $attributes['relationship'] ?? GuestRelationship::GuestOther;
                     $guest->side = $attributes['side'] ?? GuestSide::Unspecified;
+                    $guest->status = isset($attributes['id']) ? ($attributes['status'] ?? GuestStatus::Active) : GuestStatus::Active;
                     $guest->save();
 
                     $roleIds = collect($attributes['wedding_role_ids'] ?? [])->map(fn ($id) => $existingRoles[$id]->id)

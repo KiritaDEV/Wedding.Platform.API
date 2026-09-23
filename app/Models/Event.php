@@ -10,6 +10,7 @@ use DateTimeZone;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -19,6 +20,11 @@ class Event extends Model
     /** @use HasFactory<EventFactory> */
     use HasFactory, HasUlids;
 
+    protected static function booted(): void
+    {
+        static::deleting(fn (Event $event) => $event->rsvpSubmissions()->delete());
+    }
+
     protected $fillable = [
         'type',
         'name',
@@ -26,7 +32,10 @@ class Event extends Model
         'event_date',
         'start_time',
         'time_zone',
+        'rsvp_is_open',
+        'rsvp_deadline',
         'status',
+        'published_website_id',
     ];
 
     protected function casts(): array
@@ -34,8 +43,26 @@ class Event extends Model
         return [
             'type' => EventType::class,
             'event_date' => 'date',
+            'rsvp_is_open' => 'boolean',
+            'rsvp_deadline' => 'date',
             'status' => EventStatus::class,
         ];
+    }
+
+    public function hasRsvpDeadlineExpired(?CarbonImmutable $at = null): bool
+    {
+        if ($this->rsvp_deadline === null) {
+            return false;
+        }
+
+        $at ??= CarbonImmutable::now('UTC');
+
+        return $at->setTimezone(new DateTimeZone($this->time_zone))->toDateString() > $this->rsvp_deadline->toDateString();
+    }
+
+    public function isRsvpEffectivelyOpen(?CarbonImmutable $at = null): bool
+    {
+        return $this->rsvp_is_open && ! $this->hasRsvpDeadlineExpired($at);
     }
 
     public function startsAtUtc(): ?CarbonImmutable
@@ -75,6 +102,11 @@ class Event extends Model
         return $this->hasMany(Website::class);
     }
 
+    public function publishedWebsite(): BelongsTo
+    {
+        return $this->belongsTo(Website::class, 'published_website_id');
+    }
+
     public function mediaAssets(): HasMany
     {
         return $this->hasMany(MediaAsset::class);
@@ -93,5 +125,10 @@ class Event extends Model
     public function customWeddingRoles(): HasMany
     {
         return $this->hasMany(WeddingRole::class);
+    }
+
+    public function rsvpSubmissions(): HasMany
+    {
+        return $this->hasMany(RsvpSubmission::class);
     }
 }

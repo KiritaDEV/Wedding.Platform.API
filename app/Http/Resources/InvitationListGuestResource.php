@@ -15,8 +15,11 @@ class InvitationListGuestResource extends JsonResource
             'lastName' => $this->last_name,
             'relationship' => $this->relationship->value,
             'side' => $this->side->value,
+            'status' => $this->status->value,
             'weddingRoles' => WeddingRoleResource::collection($this->whenLoaded('weddingRoles')),
-            'rsvpStatus' => 'pending',
+            'rsvpResponse' => $this->rsvp_response?->value,
+            'rsvpStatus' => $this->rsvp_response?->value ?? 'pending',
+            'canPermanentlyDelete' => $this->canPermanentlyDelete(),
         ];
     }
 }

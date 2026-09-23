@@ -2,6 +2,7 @@
 
 namespace App\Invitations;
 
+use App\Enums\GuestStatus;
 use App\Models\Invitation;
 
 final class InvitationName
@@ -14,6 +15,7 @@ final class InvitationName
         }
 
         $guestNames = $invitation->guests
+            ->where('status', GuestStatus::Active)
             ->sortBy([
                 ['created_at', 'asc'],
                 ['id', 'asc'],
@@ -31,7 +33,7 @@ final class InvitationName
 
     public static function caseInsensitiveSortExpression(string $driver): string
     {
-        $count = '(SELECT COUNT(*) FROM guests guest_count WHERE guest_count.invitation_id = invitations.id)';
+        $count = "(SELECT COUNT(*) FROM guests guest_count WHERE guest_count.invitation_id = invitations.id AND guest_count.status = 'active')";
 
         if ($driver === 'mysql') {
             $first = self::mysqlGuestNameAtOffset(0);
@@ -48,11 +50,11 @@ final class InvitationName
 
     private static function mysqlGuestNameAtOffset(int $offset): string
     {
-        return "(SELECT TRIM(CONCAT(g.first_name, ' ', COALESCE(g.last_name, ''))) FROM guests g WHERE g.invitation_id = invitations.id ORDER BY g.created_at, g.id LIMIT 1 OFFSET {$offset})";
+        return "(SELECT TRIM(CONCAT(g.first_name, ' ', COALESCE(g.last_name, ''))) FROM guests g WHERE g.invitation_id = invitations.id AND g.status = 'active' ORDER BY g.created_at, g.id LIMIT 1 OFFSET {$offset})";
     }
 
     private static function sqliteGuestNameAtOffset(int $offset): string
     {
-        return "(SELECT TRIM(g.first_name || ' ' || COALESCE(g.last_name, '')) FROM guests g WHERE g.invitation_id = invitations.id ORDER BY g.created_at, g.id LIMIT 1 OFFSET {$offset})";
+        return "(SELECT TRIM(g.first_name || ' ' || COALESCE(g.last_name, '')) FROM guests g WHERE g.invitation_id = invitations.id AND g.status = 'active' ORDER BY g.created_at, g.id LIMIT 1 OFFSET {$offset})";
     }
 }

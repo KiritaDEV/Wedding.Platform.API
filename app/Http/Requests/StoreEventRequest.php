@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\EventType;
+use App\Rules\IanaTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,6 +21,7 @@ class StoreEventRequest extends FormRequest
             'type' => ['required', Rule::enum(EventType::class)],
             'eventDate' => ['nullable', 'date'],
             'slug' => ['sometimes', 'string', 'max:255'],
+            'timeZone' => ['required', 'string', new IanaTimeZone],
         ];
     }
 
@@ -32,6 +34,7 @@ class StoreEventRequest extends FormRequest
             'type' => $validated['type'],
             'event_date' => $validated['eventDate'] ?? null,
             'slug' => $validated['slug'] ?? null,
+            'time_zone' => $validated['timeZone'],
         ], fn (mixed $value): bool => $value !== null);
     }
 }

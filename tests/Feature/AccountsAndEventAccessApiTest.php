@@ -121,6 +121,7 @@ class AccountsAndEventAccessApiTest extends TestCase
             'name' => 'Neil & Hazel',
             'type' => 'wedding',
             'eventDate' => '2027-12-22',
+            'timeZone' => 'Asia/Manila',
             'membershipRole' => 'admin',
         ]);
 

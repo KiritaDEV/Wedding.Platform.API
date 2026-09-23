@@ -21,19 +21,19 @@ class EventTimingTest extends TestCase
         $this->withHeaders(['Accept' => 'application/json', 'Origin' => 'http://localhost']);
     }
 
-    public function test_existing_event_timing_is_nullable_and_does_not_require_a_website(): void
+    public function test_existing_event_time_is_optional_but_timezone_is_canonical_and_does_not_require_a_website(): void
     {
         [$event, $owner] = $this->eventWithOwner(['event_date' => '2026-12-22']);
 
         $this->assertNull($event->start_time);
-        $this->assertNull($event->time_zone);
+        $this->assertSame('UTC', $event->time_zone);
         $this->assertNull($event->startsAtUtc());
         $this->assertFalse($event->website()->exists());
         $this->actingAs($owner)->getJson("/api/events/{$event->id}")
             ->assertOk()
             ->assertJsonPath('data.eventDate', '2026-12-22')
             ->assertJsonPath('data.startTime', null)
-            ->assertJsonPath('data.timeZone', null)
+            ->assertJsonPath('data.timeZone', 'UTC')
             ->assertJsonPath('data.startsAtUtc', null);
     }
 
@@ -59,7 +59,7 @@ class EventTimingTest extends TestCase
     {
         $london = Event::factory()->create(['event_date' => '2026-07-15', 'start_time' => '15:00', 'time_zone' => 'Europe/London']);
         $newYork = Event::factory()->create(['event_date' => '2026-01-15', 'start_time' => '15:00', 'time_zone' => 'America/New_York']);
-        $incomplete = Event::factory()->create(['event_date' => '2026-12-22', 'start_time' => '15:00', 'time_zone' => null]);
+        $incomplete = Event::factory()->create(['event_date' => '2026-12-22', 'start_time' => null, 'time_zone' => 'UTC']);
 
         $this->assertSame('2026-07-15T14:00:00Z', $london->startsAtUtc()?->format('Y-m-d\TH:i:s\Z'));
         $this->assertSame('2026-01-15T20:00:00Z', $newYork->startsAtUtc()?->format('Y-m-d\TH:i:s\Z'));
@@ -86,7 +86,7 @@ class EventTimingTest extends TestCase
         $this->assertSame('Asia/Manila', $event->time_zone);
     }
 
-    public function test_null_partial_values_are_supported(): void
+    public function test_nullable_date_and_time_are_supported_while_timezone_remains_required(): void
     {
         [$event, $owner] = $this->eventWithOwner(['event_date' => '2026-12-22']);
 
@@ -94,7 +94,7 @@ class EventTimingTest extends TestCase
             'eventDate' => '2026-12-22',
             'startTime' => '15:00',
             'timeZone' => null,
-        ])->assertOk()->assertJsonPath('data.startsAtUtc', null);
+        ])->assertUnprocessable()->assertJsonValidationErrors('timeZone');
 
         $this->actingAs($owner)->putJson("/api/events/{$event->id}/timing", [
             'eventDate' => '2026-12-22',
@@ -111,7 +111,7 @@ class EventTimingTest extends TestCase
         $other = User::factory()->create();
         $superAdmin = User::factory()->create(['platform_role' => PlatformRole::SuperAdmin]);
         $url = "/api/events/{$event->id}/timing";
-        $payload = ['eventDate' => '2026-12-22', 'startTime' => null, 'timeZone' => null];
+        $payload = ['eventDate' => '2026-12-22', 'startTime' => null, 'timeZone' => 'UTC'];
 
         $this->putJson($url, $payload)->assertUnauthorized();
         $this->actingAs($other)->putJson($url, $payload)->assertForbidden();
@@ -159,6 +159,6 @@ class EventTimingTest extends TestCase
     {
         $owner = User::factory()->create();
 
-        return [app(CreateEvent::class)->handle($owner, ['name' => 'Timing Test', ...$attributes]), $owner];
+        return [app(CreateEvent::class)->handle($owner, ['name' => 'Timing Test', 'time_zone' => 'UTC', ...$attributes]), $owner];
     }
 }

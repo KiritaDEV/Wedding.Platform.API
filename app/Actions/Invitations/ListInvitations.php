@@ -2,6 +2,7 @@
 
 namespace App\Actions\Invitations;
 
+use App\Enums\GuestStatus;
 use App\Invitations\InvitationName;
 use App\Invitations\LikePattern;
 use App\Invitations\NameNormalizer;
@@ -21,7 +22,9 @@ final class ListInvitations
     {
         $this->validateRole($event, $filters['wedding_role_id'] ?? null);
 
-        $query = $event->invitations()->getQuery()->with(['guests.weddingRoles']);
+        $query = $event->invitations()->getQuery()
+            ->with(['guests' => fn ($guests) => $guests->with('weddingRoles')->withExists('rsvpSubmissionItems')])
+            ->withExists('rsvpSubmissions')->withMax('rsvpSubmissions', 'created_at');
         $this->applySearch($query, $filters['q'] ?? '');
         $this->applyLifecycle($query, $filters['lifecycle'] ?? 'all');
         $this->applyGuestFilters($query, $filters);
@@ -71,6 +74,7 @@ final class ListInvitations
         }
 
         $query->whereHas('guests', function (Builder $guest) use ($filters): void {
+            $guest->where('status', GuestStatus::Active->value);
             if (isset($filters['relationship'])) {
                 $guest->where('relationship', $filters['relationship']);
             }
@@ -80,8 +84,10 @@ final class ListInvitations
             if (isset($filters['wedding_role_id'])) {
                 $guest->whereHas('weddingRoles', fn (Builder $roles) => $roles->whereKey($filters['wedding_role_id']));
             }
-            if (isset($filters['rsvp']) && $filters['rsvp'] !== 'pending') {
-                $guest->whereRaw('0 = 1');
+            if (isset($filters['rsvp'])) {
+                $filters['rsvp'] === 'pending'
+                    ? $guest->whereNull('rsvp_response')
+                    : $guest->where('rsvp_response', $filters['rsvp']);
             }
         });
     }
@@ -95,8 +101,14 @@ final class ListInvitations
             return;
         }
 
-        // Until RSVP persistence exists, every last response is null. The stable
-        // no-response fallback for both last-response modes is recently added.
+        if (str_starts_with($sort, 'last_response_')) {
+            $direction = $sort === 'last_response_asc' ? 'ASC' : 'DESC';
+            $query->orderByRaw('(SELECT MAX(created_at) FROM rsvp_submissions WHERE invitation_id = invitations.id) '.$direction)
+                ->orderByDesc('invitations.created_at')->orderByDesc('invitations.id');
+
+            return;
+        }
+
         $query->orderByDesc('invitations.created_at')->orderByDesc('invitations.id');
     }
 
@@ -111,8 +123,11 @@ final class ListInvitations
     {
         $counts = DB::table('invitations')->where('event_id', $event->id)->selectRaw(
             "SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_invitations,
-            (SELECT COUNT(*) FROM guests g INNER JOIN invitations active_i ON active_i.id = g.invitation_id WHERE active_i.event_id = ? AND active_i.status = 'active') AS active_guests",
-            [$event->id],
+            (SELECT COUNT(*) FROM guests g INNER JOIN invitations active_i ON active_i.id = g.invitation_id WHERE active_i.event_id = ? AND active_i.status = 'active' AND g.status = 'active') AS active_guests,
+            (SELECT COUNT(*) FROM guests g INNER JOIN invitations active_i ON active_i.id = g.invitation_id WHERE active_i.event_id = ? AND active_i.status = 'active' AND g.status = 'active' AND g.rsvp_response = 'attending') AS attending,
+            (SELECT COUNT(*) FROM guests g INNER JOIN invitations active_i ON active_i.id = g.invitation_id WHERE active_i.event_id = ? AND active_i.status = 'active' AND g.status = 'active' AND g.rsvp_response = 'declined') AS declined,
+            (SELECT COUNT(*) FROM guests g INNER JOIN invitations active_i ON active_i.id = g.invitation_id WHERE active_i.event_id = ? AND active_i.status = 'active' AND g.status = 'active' AND g.rsvp_response IS NULL) AS pending",
+            [$event->id, $event->id, $event->id, $event->id],
         )->first();
         $activeInvitations = (int) $counts->active_invitations;
         $guests = (int) $counts->active_guests;
@@ -120,9 +135,9 @@ final class ListInvitations
         return [
             'activeInvitations' => $activeInvitations,
             'guests' => $guests,
-            'attending' => 0,
-            'declined' => 0,
-            'pending' => $guests,
+            'attending' => (int) $counts->attending,
+            'declined' => (int) $counts->declined,
+            'pending' => (int) $counts->pending,
         ];
     }
 

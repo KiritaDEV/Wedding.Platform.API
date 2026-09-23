@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\GuestRelationship;
 use App\Enums\GuestSide;
+use App\Enums\GuestStatus;
 use App\Models\Guest;
 use App\Models\Invitation;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,6 +23,7 @@ class GuestFactory extends Factory
             'last_name' => fake()->optional()->lastName(),
             'relationship' => GuestRelationship::GuestOther,
             'side' => GuestSide::Unspecified,
+            'status' => GuestStatus::Active,
         ];
     }
 }
