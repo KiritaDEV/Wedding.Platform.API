@@ -19,10 +19,16 @@ class InvitationListRequest extends FormRequest
         return [
             'q' => ['sometimes', 'string', 'max:255'],
             'lifecycle' => ['sometimes', Rule::in(['all', 'active', 'inactive'])],
-            'relationship' => ['sometimes', Rule::enum(GuestRelationship::class)],
-            'side' => ['sometimes', Rule::enum(GuestSide::class)],
-            'weddingRoleId' => ['sometimes', 'string', 'ulid'],
-            'rsvp' => ['sometimes', Rule::in(['pending', 'attending', 'declined'])],
+            'relationships' => ['sometimes', 'array'],
+            'relationships.*' => ['distinct', Rule::enum(GuestRelationship::class)],
+            'sides' => ['sometimes', 'array'],
+            'sides.*' => ['distinct', Rule::enum(GuestSide::class)],
+            'roleIds' => ['sometimes', 'array'],
+            'roleIds.*' => ['distinct', 'string', 'ulid'],
+            'rsvpStatuses' => ['sometimes', 'array'],
+            'rsvpStatuses.*' => ['distinct', Rule::in(['pending', 'partial', 'complete'])],
+            'guestResponses' => ['sometimes', 'array'],
+            'guestResponses.*' => ['distinct', Rule::in(['pending', 'attending', 'declined'])],
             'sort' => ['sometimes', Rule::in([
                 'recently_added', 'invitation_asc', 'invitation_desc',
                 'last_response_desc', 'last_response_asc',
@@ -36,10 +42,11 @@ class InvitationListRequest extends FormRequest
         return [
             'q' => trim((string) $this->validated('q', '')),
             'lifecycle' => $this->validated('lifecycle', 'all'),
-            'relationship' => $this->validated('relationship'),
-            'side' => $this->validated('side'),
-            'wedding_role_id' => $this->validated('weddingRoleId'),
-            'rsvp' => $this->validated('rsvp'),
+            'relationships' => $this->validated('relationships', []),
+            'sides' => $this->validated('sides', []),
+            'role_ids' => $this->validated('roleIds', []),
+            'rsvp_statuses' => $this->validated('rsvpStatuses', []),
+            'guest_responses' => $this->validated('guestResponses', []),
             'sort' => $this->validated('sort', 'recently_added'),
         ];
     }

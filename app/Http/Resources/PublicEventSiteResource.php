@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Website\RenderableWebsite;
 use App\Website\WebsiteSectionMediaReferences;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,8 +20,7 @@ class PublicEventSiteResource extends JsonResource
             ];
         }
 
-        $draft = (new WebsiteDraftResource($website))->resolve($request);
-        unset($draft['eventId'], $draft['name']);
+        $draft = (new RenderableWebsite($website))->toArray($request);
         $sections = array_map(
             static fn ($section): array => $section instanceof JsonResource ? $section->resolve($request) : $section,
             $draft['sections'],
@@ -35,13 +35,6 @@ class PublicEventSiteResource extends JsonResource
             ->flatMap(fn ($section) => app(WebsiteSectionMediaReferences::class)->extract($section->type, $section->content, $section->appearance))
             ->pluck('assetId')->unique();
         $draft['media'] = array_intersect_key((array) $draft['media'], array_fill_keys($publicMediaIds->all(), true));
-        foreach ($draft['media'] as $assetId => &$asset) {
-            $asset['web']['url'] = route('public.events.media.web', [
-                'slug' => $this->slug,
-                'asset' => $assetId,
-            ]);
-        }
-        unset($asset);
 
         return [
             'status' => 'published',

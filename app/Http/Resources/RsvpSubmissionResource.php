@@ -13,7 +13,6 @@ class RsvpSubmissionResource extends JsonResource
             'id' => $this->id,
             'createdAt' => $this->created_at?->toISOString(),
             'actorType' => $this->actor_type->value,
-            'actorUserId' => $this->actor_user_id,
             'actorName' => $this->actor_name_snapshot,
             'note' => $this->note,
             'items' => $this->items->map(fn ($item): array => [

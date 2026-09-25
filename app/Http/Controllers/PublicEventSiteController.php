@@ -13,7 +13,7 @@ class PublicEventSiteController extends Controller
 {
     public function show(string $slug): PublicEventSiteResource
     {
-        $event = Event::query()->where('slug', $slug)->with('publishedWebsite.sections.website')->firstOrFail();
+        $event = Event::query()->where('slug', $slug)->with('publishedWebsite.event', 'publishedWebsite.sections.website')->firstOrFail();
 
         return new PublicEventSiteResource($event);
     }

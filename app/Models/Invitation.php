@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invitation extends Model
 {
@@ -31,6 +32,7 @@ class Invitation extends Model
         static::saving(function (Invitation $invitation): void {
             $invitation->custom_name = NameNormalizer::nullableDisplay($invitation->custom_name);
         });
+
     }
 
     public function event(): BelongsTo
@@ -53,6 +55,41 @@ class Invitation extends Model
         return $this->hasMany(RsvpSubmission::class);
     }
 
+    public function privateLinks(): HasMany
+    {
+        return $this->hasMany(InvitationPrivateLink::class);
+    }
+
+    public function currentPrivateLink(): HasOne
+    {
+        return $this->hasOne(InvitationPrivateLink::class)->where('current_slot', 'current');
+    }
+
+    public function browserCredentials(): HasMany
+    {
+        return $this->hasMany(InvitationBrowserCredential::class);
+    }
+
+    public function currentBrowserCredential(): HasOne
+    {
+        return $this->hasOne(InvitationBrowserCredential::class)->where('current_slot', 'current');
+    }
+
+    public function accessTransferRequests(): HasMany
+    {
+        return $this->hasMany(InvitationAccessTransferRequest::class);
+    }
+
+    public function accessAudits(): HasMany
+    {
+        return $this->hasMany(InvitationAccessAudit::class);
+    }
+
+    public function activeAccessTransferRequest(): HasOne
+    {
+        return $this->hasOne(InvitationAccessTransferRequest::class)->where('current_slot', 'active');
+    }
+
     public function rsvpSummary(): array
     {
         $active = $this->guests->where('status', GuestStatus::Active);
@@ -72,6 +109,11 @@ class Invitation extends Model
     {
         $ownHistory = $this->rsvp_submissions_exists ?? $this->rsvpSubmissions()->exists();
         if ($ownHistory) {
+            return false;
+        }
+
+        $transferHistory = $this->access_transfer_requests_exists ?? $this->accessTransferRequests()->exists();
+        if ($transferHistory) {
             return false;
         }
 

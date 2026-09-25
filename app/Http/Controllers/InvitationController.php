@@ -6,6 +6,8 @@ use App\Actions\Invitations\CreateInvitation;
 use App\Actions\Invitations\DeleteInvitation;
 use App\Actions\Invitations\ListInvitations;
 use App\Actions\Invitations\MoveGuest;
+use App\Actions\Invitations\ResetInvitationTrustedAccess;
+use App\Actions\Invitations\RotatePrivateInvitationLink;
 use App\Actions\Invitations\SetInvitationStatus;
 use App\Actions\Invitations\UpdateInvitation;
 use App\Actions\Invitations\UpdateInvitationRsvp;
@@ -16,6 +18,7 @@ use App\Http\Requests\StoreInvitationRequest;
 use App\Http\Requests\UpdateInvitationRequest;
 use App\Http\Requests\UpdateInvitationRsvpRequest;
 use App\Http\Resources\GuestResource;
+use App\Http\Resources\InvitationAccessAuditResource;
 use App\Http\Resources\InvitationListResource;
 use App\Http\Resources\InvitationOptionResource;
 use App\Http\Resources\InvitationResource;
@@ -64,8 +67,9 @@ class InvitationController extends Controller
     public function show(Request $request, string $event, string $invitation): InvitationResource
     {
         $model = $this->invitation($this->authorizedEvent($event), $invitation)
-            ->load(['guests' => fn ($query) => $query->with('weddingRoles')->withExists('rsvpSubmissionItems')])
-            ->loadExists('rsvpSubmissions')->loadMax('rsvpSubmissions', 'created_at');
+            ->load(['guests' => fn ($query) => $query->with('weddingRoles')->withExists('rsvpSubmissionItems'), 'currentPrivateLink'])
+            ->loadExists(['rsvpSubmissions', 'accessTransferRequests', 'currentBrowserCredential', 'activeAccessTransferRequest'])
+            ->loadMax('rsvpSubmissions', 'created_at');
 
         return new InvitationResource($model);
     }
@@ -105,27 +109,30 @@ class InvitationController extends Controller
         ]]);
     }
 
-    public function rsvpHistory(Request $request, string $event, string $invitation): AnonymousResourceCollection
+    public function rsvpHistory(Request $request, string $event, string $invitation): JsonResponse
     {
         $eventModel = $this->authorizedEvent($event);
         $submissions = $this->invitation($eventModel, $invitation)->rsvpSubmissions()
-            ->with('items')->orderByDesc('created_at')->orderByDesc('id')->paginate(25);
+            ->with('items')->orderByDesc('created_at')->orderByDesc('id')->cursorPaginate(25);
 
-        return RsvpSubmissionResource::collection($submissions);
+        return response()->json([
+            'data' => RsvpSubmissionResource::collection($submissions->items())->resolve($request),
+            'meta' => ['nextCursor' => $submissions->nextCursor()?->encode()],
+        ]);
     }
 
-    public function activate(SetInvitationStatus $setStatus, string $event, string $invitation): InvitationResource
+    public function activate(Request $request, SetInvitationStatus $setStatus, string $event, string $invitation): InvitationResource
     {
         $eventModel = $this->authorizedEvent($event, 'update');
 
-        return new InvitationResource($setStatus->handle($this->invitation($eventModel, $invitation), InvitationStatus::Active));
+        return new InvitationResource($setStatus->handle($this->invitation($eventModel, $invitation), InvitationStatus::Active, $request->user()));
     }
 
-    public function deactivate(SetInvitationStatus $setStatus, string $event, string $invitation): InvitationResource
+    public function deactivate(Request $request, SetInvitationStatus $setStatus, string $event, string $invitation): InvitationResource
     {
         $eventModel = $this->authorizedEvent($event, 'update');
 
-        return new InvitationResource($setStatus->handle($this->invitation($eventModel, $invitation), InvitationStatus::Inactive));
+        return new InvitationResource($setStatus->handle($this->invitation($eventModel, $invitation), InvitationStatus::Inactive, $request->user()));
     }
 
     public function move(MoveGuestRequest $request, MoveGuest $move, string $event, string $sourceInvitation, string $guest): GuestResource
@@ -144,6 +151,42 @@ class InvitationController extends Controller
         $delete->handle($this->invitation($eventModel, $invitation));
 
         return response()->noContent();
+    }
+
+    public function resetTrustedAccess(Request $request, ResetInvitationTrustedAccess $reset, string $event, string $invitation): JsonResponse
+    {
+        $eventModel = $this->authorizedEvent($event, 'update');
+
+        return response()->json(['data' => $reset->handle(
+            $eventModel,
+            $this->invitation($eventModel, $invitation),
+            $request->user(),
+        )]);
+    }
+
+    public function rotatePrivateLink(Request $request, RotatePrivateInvitationLink $rotate, string $event, string $invitation): JsonResponse
+    {
+        $eventModel = $this->authorizedEvent($event, 'update');
+
+        return response()->json(['data' => $rotate->handle(
+            $eventModel,
+            $this->invitation($eventModel, $invitation),
+            $request->user(),
+        )]);
+    }
+
+    public function accessAudit(Request $request, string $event, string $invitation): JsonResponse
+    {
+        $eventModel = $this->authorizedEvent($event);
+        $audits = $this->invitation($eventModel, $invitation)->accessAudits()
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->cursorPaginate(25);
+
+        return response()->json([
+            'data' => InvitationAccessAuditResource::collection($audits->items())->resolve($request),
+            'meta' => ['nextCursor' => $audits->nextCursor()?->encode()],
+        ]);
     }
 
     private function authorizedEvent(string $event, string $ability = 'view'): Event

@@ -7,6 +7,7 @@ use App\Actions\Invitations\MoveGuest;
 use App\Actions\Invitations\UpdateInvitation;
 use App\Enums\EventMembershipRole;
 use App\Enums\GuestStatus;
+use App\Enums\PlatformRole;
 use App\Models\Event;
 use App\Models\EventMembership;
 use App\Models\User;
@@ -165,6 +166,49 @@ class OperationalRsvpTest extends TestCase
         }
     }
 
+    public function test_admin_and_super_admin_can_manage_while_management_changes_create_no_notification_or_access_audit(): void
+    {
+        $event = Event::factory()->create();
+        [, $admin] = $this->eventMember(EventMembershipRole::Admin, $event);
+        $superAdmin = User::factory()->create();
+        $superAdmin->forceFill(['platform_role' => PlatformRole::SuperAdmin])->save();
+        $invitation = app(CreateInvitation::class)->handle($event, [['first_name' => 'Guest']]);
+        $guest = $invitation->guests->sole();
+        $url = "/api/events/{$event->id}/invitations/{$invitation->id}/rsvp";
+
+        $this->actingAs($admin)->putJson($url, ['responses' => [['guestId' => $guest->id, 'response' => 'attending']]])
+            ->assertOk()->assertJsonPath('data.rsvp.status', 'complete');
+        $this->actingAs($superAdmin)->putJson($url, ['responses' => [['guestId' => $guest->id, 'response' => null]]])
+            ->assertOk()->assertJsonPath('data.rsvp.status', 'pending');
+
+        $this->assertNull($guest->refresh()->rsvp_response);
+        $this->assertDatabaseCount('rsvp_submissions', 2);
+        $this->assertDatabaseCount('user_notifications', 0);
+        $this->assertDatabaseCount('invitation_access_audits', 0);
+    }
+
+    public function test_history_uses_stable_cursor_pagination_and_hides_internal_actor_id(): void
+    {
+        [$event, $owner] = $this->eventMember();
+        $invitation = app(CreateInvitation::class)->handle($event, [['first_name' => 'Guest']]);
+        $guest = $invitation->guests->sole();
+        $mutation = "/api/events/{$event->id}/invitations/{$invitation->id}/rsvp";
+
+        foreach (range(1, 26) as $index) {
+            $response = $index % 2 === 0 ? 'attending' : 'declined';
+            $this->actingAs($owner)->putJson($mutation, ['responses' => [['guestId' => $guest->id, 'response' => $response]]])->assertOk();
+        }
+
+        $history = "/api/events/{$event->id}/invitations/{$invitation->id}/rsvp-history";
+        $first = $this->actingAs($owner)->getJson($history)->assertOk()->assertJsonCount(25, 'data')
+            ->assertJsonMissingPath('data.0.actorUserId')->json();
+        $this->assertSame('attending', $first['data'][0]['items'][0]['response']);
+        $this->assertNotNull($first['meta']['nextCursor']);
+        $second = $this->actingAs($owner)->getJson($history.'?cursor='.urlencode($first['meta']['nextCursor']))
+            ->assertOk()->assertJsonCount(1, 'data')->json();
+        $this->assertEmpty(array_intersect(array_column($first['data'], 'id'), array_column($second['data'], 'id')));
+    }
+
     public function test_real_guest_filters_and_event_delete_removes_the_complete_rsvp_aggregate(): void
     {
         [$event, $owner] = $this->eventMember();
@@ -175,10 +219,10 @@ class OperationalRsvpTest extends TestCase
         ]])->assertOk();
 
         foreach (['attending', 'declined'] as $response) {
-            $this->actingAs($owner)->getJson("/api/events/{$event->id}/invitations?rsvp={$response}")
+            $this->actingAs($owner)->getJson("/api/events/{$event->id}/invitations?guestResponses[]={$response}")
                 ->assertOk()->assertJsonPath('meta.pagination.total', 1);
         }
-        $this->actingAs($owner)->getJson("/api/events/{$event->id}/invitations?rsvp=pending")
+        $this->actingAs($owner)->getJson("/api/events/{$event->id}/invitations?guestResponses[]=pending")
             ->assertOk()->assertJsonPath('meta.pagination.total', 0);
 
         $event->delete();

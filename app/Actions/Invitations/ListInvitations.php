@@ -20,14 +20,16 @@ final class ListInvitations
     /** @return array{invitations: LengthAwarePaginator, summary: array, lifecycleCounts: array} */
     public function handle(Event $event, array $filters): array
     {
-        $this->validateRole($event, $filters['wedding_role_id'] ?? null);
+        $this->validateRoles($event, $filters['role_ids'] ?? []);
 
         $query = $event->invitations()->getQuery()
             ->with(['guests' => fn ($guests) => $guests->with('weddingRoles')->withExists('rsvpSubmissionItems')])
-            ->withExists('rsvpSubmissions')->withMax('rsvpSubmissions', 'created_at');
+            ->withExists(['rsvpSubmissions', 'accessTransferRequests', 'currentBrowserCredential', 'activeAccessTransferRequest'])
+            ->withMax('rsvpSubmissions', 'created_at');
         $this->applySearch($query, $filters['q'] ?? '');
         $this->applyLifecycle($query, $filters['lifecycle'] ?? 'all');
         $this->applyGuestFilters($query, $filters);
+        $this->applyRsvpStatuses($query, $filters['rsvp_statuses'] ?? []);
         $this->applySort($query, $filters['sort'] ?? 'recently_added');
 
         return [
@@ -67,27 +69,55 @@ final class ListInvitations
 
     private function applyGuestFilters(Builder $query, array $filters): void
     {
-        $active = isset($filters['relationship']) || isset($filters['side'])
-            || isset($filters['wedding_role_id']) || isset($filters['rsvp']);
-        if (! $active) {
+        foreach ([['relationships', 'relationship'], ['sides', 'side']] as [$filter, $column]) {
+            if (($filters[$filter] ?? []) !== []) {
+                $query->whereHas('guests', fn (Builder $guests) => $guests
+                    ->where('status', GuestStatus::Active->value)->whereIn($column, $filters[$filter]));
+            }
+        }
+        if (($filters['role_ids'] ?? []) !== []) {
+            $query->whereHas('guests', fn (Builder $guests) => $guests
+                ->where('status', GuestStatus::Active->value)
+                ->whereHas('weddingRoles', fn (Builder $roles) => $roles->whereKey($filters['role_ids'])));
+        }
+        if (($filters['guest_responses'] ?? []) !== []) {
+            $responses = $filters['guest_responses'];
+            $query->whereHas('guests', function (Builder $guests) use ($responses): void {
+                $guests->where('status', GuestStatus::Active->value)
+                    ->where(function (Builder $responsesQuery) use ($responses): void {
+                        $values = array_values(array_diff($responses, ['pending']));
+                        if ($values !== []) {
+                            $responsesQuery->whereIn('rsvp_response', $values);
+                        }
+                        if (in_array('pending', $responses, true)) {
+                            $values === [] ? $responsesQuery->whereNull('rsvp_response') : $responsesQuery->orWhereNull('rsvp_response');
+                        }
+                    });
+            });
+        }
+    }
+
+    /** @param list<string> $statuses */
+    private function applyRsvpStatuses(Builder $query, array $statuses): void
+    {
+        if ($statuses === []) {
             return;
         }
 
-        $query->whereHas('guests', function (Builder $guest) use ($filters): void {
-            $guest->where('status', GuestStatus::Active->value);
-            if (isset($filters['relationship'])) {
-                $guest->where('relationship', $filters['relationship']);
-            }
-            if (isset($filters['side'])) {
-                $guest->where('side', $filters['side']);
-            }
-            if (isset($filters['wedding_role_id'])) {
-                $guest->whereHas('weddingRoles', fn (Builder $roles) => $roles->whereKey($filters['wedding_role_id']));
-            }
-            if (isset($filters['rsvp'])) {
-                $filters['rsvp'] === 'pending'
-                    ? $guest->whereNull('rsvp_response')
-                    : $guest->where('rsvp_response', $filters['rsvp']);
+        $pendingGuests = fn (Builder $guests) => $guests
+            ->where('status', GuestStatus::Active->value)->whereNull('rsvp_response');
+        $answeredGuests = fn (Builder $guests) => $guests
+            ->where('status', GuestStatus::Active->value)->whereNotNull('rsvp_response');
+
+        $query->where(function (Builder $statusQuery) use ($statuses, $pendingGuests, $answeredGuests): void {
+            foreach ($statuses as $status) {
+                $statusQuery->orWhere(function (Builder $candidate) use ($status, $pendingGuests, $answeredGuests): void {
+                    match ($status) {
+                        'pending' => $candidate->whereDoesntHave('guests', $answeredGuests),
+                        'partial' => $candidate->whereHas('guests', $pendingGuests)->whereHas('guests', $answeredGuests),
+                        'complete' => $candidate->whereDoesntHave('guests', $pendingGuests),
+                    };
+                });
             }
         });
     }
@@ -154,17 +184,18 @@ final class ListInvitations
         ];
     }
 
-    private function validateRole(Event $event, ?string $roleId): void
+    /** @param list<string> $roleIds */
+    private function validateRoles(Event $event, array $roleIds): void
     {
-        if ($roleId === null) {
+        if ($roleIds === []) {
             return;
         }
 
-        $available = WeddingRole::query()->whereKey($roleId)
+        $available = WeddingRole::query()->whereKey($roleIds)
             ->where(fn (Builder $query) => $query->whereNull('event_id')->orWhere('event_id', $event->id))
-            ->exists();
-        if (! $available) {
-            throw ValidationException::withMessages(['weddingRoleId' => 'The selected Wedding Role is unavailable for this Event.']);
+            ->count();
+        if ($available !== count($roleIds)) {
+            throw ValidationException::withMessages(['roleIds' => 'A selected Wedding Role is unavailable for this Event.']);
         }
     }
 }

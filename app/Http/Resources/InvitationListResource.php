@@ -23,6 +23,10 @@ class InvitationListResource extends JsonResource
             'rsvp' => $this->rsvpSummary(),
             'lastResponse' => $this->rsvp_submissions_max_created_at === null ? null : CarbonImmutable::parse($this->rsvp_submissions_max_created_at)->toISOString(),
             'canPermanentlyDelete' => $this->canPermanentlyDelete(),
+            'trustedAccess' => [
+                'hasTrustedBrowser' => (bool) $this->current_browser_credential_exists,
+                'hasPendingAccessRequest' => (bool) $this->active_access_transfer_request_exists,
+            ],
             'guests' => InvitationListGuestResource::collection($this->guests),
             'createdAt' => $this->created_at?->toISOString(),
         ];

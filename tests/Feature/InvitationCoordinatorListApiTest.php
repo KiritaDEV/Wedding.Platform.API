@@ -147,7 +147,7 @@ class InvitationCoordinatorListApiTest extends TestCase
         $this->assertStringNotContainsString("ESCAPE '\\\\'", LikePattern::clause('normalized_name'));
     }
 
-    public function test_structured_filters_use_one_same_guest_and_compose_separately_with_search(): void
+    public function test_structured_filter_groups_match_independently_and_compose_with_search(): void
     {
         [$event, $owner] = $this->eventMember(EventMembershipRole::Owner);
         $invitation = app(CreateInvitation::class)->handle($event, [
@@ -160,14 +160,67 @@ class InvitationCoordinatorListApiTest extends TestCase
         app(AssignWeddingRole::class)->handle($invitation->guests->firstWhere('first_name', 'Pedro'), $cord);
 
         $base = "/api/events/{$event->id}/invitations";
-        $this->actingAs($owner)->getJson("{$base}?side=bride&weddingRoleId={$cord->id}")
-            ->assertOk()->assertJsonPath('meta.pagination.total', 0);
-        $this->actingAs($owner)->getJson("{$base}?relationship=friend&side=bride&weddingRoleId={$bridesmaid->id}&rsvp=pending")
+        $this->actingAs($owner)->getJson("{$base}?sides[]=bride&roleIds[]={$cord->id}")
             ->assertOk()->assertJsonPath('meta.pagination.total', 1);
-        $this->actingAs($owner)->getJson("{$base}?q=Pedro&side=bride&weddingRoleId={$bridesmaid->id}")
+        $this->actingAs($owner)->getJson("{$base}?relationships[]=friend&sides[]=bride&roleIds[]={$bridesmaid->id}&rsvpStatuses[]=pending")
             ->assertOk()->assertJsonPath('meta.pagination.total', 1);
-        $this->actingAs($owner)->getJson("{$base}?rsvp=attending")->assertOk()->assertJsonPath('meta.pagination.total', 0);
-        $this->actingAs($owner)->getJson("{$base}?rsvp=declined")->assertOk()->assertJsonPath('meta.pagination.total', 0);
+        $this->actingAs($owner)->getJson("{$base}?q=Pedro&sides[]=bride&roleIds[]={$bridesmaid->id}")
+            ->assertOk()->assertJsonPath('meta.pagination.total', 1);
+        $this->actingAs($owner)->getJson("{$base}?rsvpStatuses[]=attending")->assertUnprocessable();
+        $this->actingAs($owner)->getJson("{$base}?guestResponses[]=partial")->assertUnprocessable();
+    }
+
+    public function test_rsvp_filter_uses_the_same_invitation_status_as_rows_without_changing_guest_totals(): void
+    {
+        [$event, $owner] = $this->eventMember(EventMembershipRole::Owner);
+        $pending = app(CreateInvitation::class)->handle($event, [['first_name' => 'Pending One'], ['first_name' => 'Pending Two']]);
+        $partial = app(CreateInvitation::class)->handle($event, [['first_name' => 'Partial One'], ['first_name' => 'Partial Two']]);
+        $complete = app(CreateInvitation::class)->handle($event, [['first_name' => 'Complete One'], ['first_name' => 'Complete Two']]);
+        $partial->guests[0]->update(['rsvp_response' => 'attending']);
+        $complete->guests[0]->update(['rsvp_response' => 'attending']);
+        $complete->guests[1]->update(['rsvp_response' => 'declined']);
+        $base = "/api/events/{$event->id}/invitations";
+
+        foreach (['pending' => $pending->id, 'partial' => $partial->id, 'complete' => $complete->id] as $status => $id) {
+            $response = $this->actingAs($owner)->getJson("{$base}?rsvpStatuses[]={$status}")->assertOk()
+                ->assertJsonPath('meta.pagination.total', 1)
+                ->assertJsonPath('data.0.id', $id)
+                ->assertJsonPath('data.0.rsvp.status', $status);
+            $response->assertJsonPath('meta.summary.guests', 6)
+                ->assertJsonPath('meta.summary.attending', 2)
+                ->assertJsonPath('meta.summary.declined', 1)
+                ->assertJsonPath('meta.summary.pending', 3);
+        }
+    }
+
+    public function test_multi_select_groups_use_or_within_and_independent_and_across_groups(): void
+    {
+        [$event, $owner] = $this->eventMember(EventMembershipRole::Owner);
+        $first = app(CreateInvitation::class)->handle($event, [
+            ['first_name' => 'Parent Guest', 'relationship' => 'parent', 'side' => 'bride'],
+            ['first_name' => 'Role Guest', 'relationship' => 'colleague', 'side' => 'groom'],
+        ]);
+        $second = app(CreateInvitation::class)->handle($event, [['first_name' => 'Friend Guest', 'relationship' => 'friend', 'side' => 'groom']]);
+        $third = app(CreateInvitation::class)->handle($event, [['first_name' => 'Other Guest', 'relationship' => 'guest_other', 'side' => 'unspecified']]);
+        $groomsman = WeddingRole::query()->where('key', 'groomsman')->firstOrFail();
+        $bridesmaid = WeddingRole::query()->where('key', 'bridesmaid')->firstOrFail();
+        $custom = app(CreateCustomWeddingRole::class)->handle($event, 'Custom Reader');
+        app(AssignWeddingRole::class)->handle($first->guests[1], $groomsman);
+        app(AssignWeddingRole::class)->handle($second->guests[0], $bridesmaid);
+        app(AssignWeddingRole::class)->handle($third->guests[0], $custom);
+        $first->guests[0]->update(['rsvp_response' => 'attending']);
+        $second->guests[0]->update(['rsvp_response' => 'declined']);
+        $base = "/api/events/{$event->id}/invitations";
+
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $this->ids($owner, "{$base}?relationships[]=parent&relationships[]=friend"));
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $this->ids($owner, "{$base}?sides[]=bride&sides[]=groom"));
+        $this->assertEqualsCanonicalizing([$first->id, $second->id, $third->id], $this->ids($owner, "{$base}?roleIds[]={$groomsman->id}&roleIds[]={$bridesmaid->id}&roleIds[]={$custom->id}"));
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $this->ids($owner, "{$base}?guestResponses[]=attending&guestResponses[]=declined"));
+        $this->assertEqualsCanonicalizing([$first->id, $third->id], $this->ids($owner, "{$base}?guestResponses[]=pending"));
+        $this->assertEqualsCanonicalizing([$first->id, $third->id], $this->ids($owner, "{$base}?rsvpStatuses[]=partial&rsvpStatuses[]=pending"));
+        $this->assertSame([$first->id], $this->ids($owner, "{$base}?relationships[]=parent&roleIds[]={$groomsman->id}&guestResponses[]=attending"));
+        $this->actingAs($owner)->getJson("{$base}?relationships[]=parent&relationships[]=bad")->assertUnprocessable();
+        $this->actingAs($owner)->getJson("{$base}?guestResponses[]=complete")->assertUnprocessable();
     }
 
     public function test_lifecycle_and_role_validation_are_strict_and_summary_ignores_query(): void
@@ -189,8 +242,8 @@ class InvitationCoordinatorListApiTest extends TestCase
         $this->actingAs($owner)->getJson("{$base}?lifecycle=bad")->assertUnprocessable();
         $this->actingAs($owner)->getJson("{$base}?sort=bad")->assertUnprocessable();
         $this->actingAs($owner)->getJson("{$base}?page=0")->assertUnprocessable();
-        $this->actingAs($owner)->getJson("{$base}?weddingRoleId={$foreignRole->id}")
-            ->assertUnprocessable()->assertJsonValidationErrors('weddingRoleId');
+        $this->actingAs($owner)->getJson("{$base}?roleIds[]={$foreignRole->id}")
+            ->assertUnprocessable()->assertJsonValidationErrors('roleIds');
     }
 
     public function test_sort_modes_use_effective_names_and_stable_no_response_fallback(): void
@@ -260,12 +313,12 @@ class InvitationCoordinatorListApiTest extends TestCase
             ->assertJsonPath('meta.pagination.total', 27)->assertJsonPath('meta.pagination.lastPage', 2)
             ->assertJsonPath('meta.summary.activeInvitations', 27);
         $this->actingAs($owner)->getJson("{$base}?page=2")->assertOk()->assertJsonCount(2, 'data');
-        $this->actingAs($owner)->getJson("{$base}?side=bride")->assertOk()
+        $this->actingAs($owner)->getJson("{$base}?sides[]=bride")->assertOk()
             ->assertJsonCount(2, 'data')->assertJsonPath('meta.pagination.total', 2)
             ->assertJsonPath('meta.summary.activeInvitations', 27);
         $this->actingAs($owner)->getJson("{$base}?q=Guest%2027")->assertOk()
             ->assertJsonCount(1, 'data')->assertJsonPath('meta.pagination.total', 1);
-        $this->actingAs($owner)->getJson("{$base}?weddingRoleId={$role->id}")->assertOk()
+        $this->actingAs($owner)->getJson("{$base}?roleIds[]={$role->id}")->assertOk()
             ->assertJsonPath('meta.pagination.total', 27);
     }
 

@@ -40,6 +40,9 @@ final class CreateInvitation
                     'status' => InvitationStatus::Active,
                 ]);
 
+                // The model hook provisions this inside the same transaction; make the invariant explicit here.
+                app(ProvisionPrivateInvitationLink::class)->handle($invitation);
+
                 foreach ($guests as $attributes) {
                     $guest = $invitation->guests()->create([
                         'event_id' => $event->getKey(),
@@ -54,7 +57,7 @@ final class CreateInvitation
                     $guest->weddingRoles()->sync($ids);
                 }
 
-                return $invitation->load('guests.weddingRoles');
+                return $invitation->load('guests.weddingRoles', 'currentPrivateLink');
             });
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['guests' => 'A Guest with this name already exists in the Event.']);
