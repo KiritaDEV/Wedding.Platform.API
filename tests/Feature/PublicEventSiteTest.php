@@ -31,7 +31,7 @@ class PublicEventSiteTest extends TestCase
             ->assertJsonMissing(['name' => 'Secret Draft']);
     }
 
-    public function test_public_site_returns_only_published_project_and_omits_rsvp_and_management_data(): void
+    public function test_public_site_omits_the_complete_rsvp_section_and_management_data(): void
     {
         $event = Event::factory()->create(['slug' => 'our-day']);
         $first = $this->project($event, 'First Draft');
@@ -48,6 +48,7 @@ class PublicEventSiteTest extends TestCase
             ->assertJsonMissingPath('data.event.membershipRole');
 
         $this->assertNotContains('rsvp', collect($response->json('data.website.sections'))->pluck('type')->all());
+        $this->assertStringNotContainsString('privateInvitation', $response->getContent());
 
         app(PublishWebsite::class)->handle($event, $first);
         $this->getJson('/api/public/events/our-day/site')->assertJsonPath('data.website.id', $first->id);
@@ -61,17 +62,21 @@ class PublicEventSiteTest extends TestCase
         $draft = $this->project($event, 'Draft');
         $publishedAsset = $this->asset($event, 'published.webp');
         $draftAsset = $this->asset($event, 'draft.webp');
+        $rsvpOnlyAsset = $this->asset($event, 'rsvp-only.webp');
         $this->referenceHeroAsset($published, $publishedAsset->id);
+        $this->referenceRsvpAssets($published, [$publishedAsset->id, $rsvpOnlyAsset->id]);
         $this->referenceHeroAsset($draft, $draftAsset->id);
         app(PublishWebsite::class)->handle($event, $published);
 
         $payload = $this->getJson('/api/public/events/media-day/site')->assertOk();
         $payload->assertJsonPath('data.website.media.'.$publishedAsset->id.'.web.url', route('public.events.media.web', ['slug' => 'media-day', 'asset' => $publishedAsset->id]))
-            ->assertJsonMissing(['id' => $draftAsset->id]);
+            ->assertJsonMissing(['id' => $draftAsset->id])
+            ->assertJsonMissing(['id' => $rsvpOnlyAsset->id]);
 
         $this->get("/api/public/events/media-day/media/{$publishedAsset->id}/web")
             ->assertOk()->assertHeader('content-type', 'image/webp');
         $this->get("/api/public/events/media-day/media/{$draftAsset->id}/web")->assertNotFound();
+        $this->get("/api/public/events/media-day/media/{$rsvpOnlyAsset->id}/web")->assertNotFound();
         $this->getJson("/api/events/{$event->id}/media")->assertUnauthorized();
     }
 
@@ -99,6 +104,26 @@ class PublicEventSiteTest extends TestCase
         $appearance = $hero->appearance;
         $appearance['shared']['backgroundMedia'] = ['assetId' => $assetId, 'focalPoint' => ['x' => 0.5, 'y' => 0.5], 'zoom' => 1];
         $hero->update(['appearance' => $appearance]);
+    }
+
+    /** @param list<string> $assetIds */
+    private function referenceRsvpAssets($website, array $assetIds): void
+    {
+        $rsvp = $website->sections()->where('type', 'rsvp')->sole();
+        $content = $rsvp->content;
+        $content['compositions']['shared']['childFlow']['elements'][] = [
+            'id' => 'rsvp-media',
+            'type' => 'media',
+            'editorName' => 'Media 1',
+            'items' => collect($assetIds)->values()->map(fn (string $assetId, int $index): array => [
+                'id' => "rsvp-media-{$index}",
+                'type' => 'image',
+                'mediaId' => $assetId,
+                'alt' => 'Private RSVP media',
+            ])->all(),
+        ];
+        $content['compositions']['shared']['childFlow']['order'][] = ['kind' => 'element', 'id' => 'rsvp-media'];
+        $rsvp->update(['content' => $content]);
     }
 
     private function project(Event $event, string $name)

@@ -12,7 +12,42 @@ final class WebsiteSectionRegistry
         return [
             'hero' => $this->definition('hero', 'Hero', 10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]),
             'gallery' => $this->definition('gallery', 'Gallery', 70, ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]]),
-            'rsvp' => $this->definition('rsvp', 'RSVP', 90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]),
+            'rsvp' => $this->definition('rsvp', 'RSVP', 90, [
+                'semantic' => [],
+                'compositions' => ['shared' => ['childFlow' => [
+                    'elements' => [
+                        [
+                            'id' => 'rsvp-intro-heading',
+                            'type' => 'text',
+                            'editorName' => 'Text 1',
+                            'document' => [
+                                'type' => 'doc',
+                                'children' => [[
+                                    'type' => 'paragraph',
+                                    'children' => [['text' => 'Kindly Respond']],
+                                ]],
+                            ],
+                        ],
+                        [
+                            'id' => 'rsvp-intro-body',
+                            'type' => 'text',
+                            'editorName' => 'Text 2',
+                            'document' => [
+                                'type' => 'doc',
+                                'children' => [[
+                                    'type' => 'paragraph',
+                                    'children' => [['text' => 'We would be honored to celebrate this day with you.']],
+                                ]],
+                            ],
+                        ],
+                    ],
+                    'order' => [
+                        ['kind' => 'element', 'id' => 'rsvp-intro-heading'],
+                        ['kind' => 'element', 'id' => 'rsvp-intro-body'],
+                        ['kind' => 'specialized', 'key' => 'content'],
+                    ],
+                ]]],
+            ]),
             'blank' => $this->definition('blank', 'Section', 100, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]], WebsiteSectionLifecycle::UserOwnedRepeatable),
         ];
     }

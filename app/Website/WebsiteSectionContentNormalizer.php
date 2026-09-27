@@ -14,8 +14,16 @@ final class WebsiteSectionContentNormalizer
      */
     public function normalize(string $sectionId, string $sectionType, array $content): array
     {
-        if ($this->sections->get($sectionType) === null) {
+        $definition = $this->sections->get($sectionType);
+        if ($definition === null) {
             throw new DomainException("Website section type [{$sectionType}] has no runtime content adapter.");
+        }
+
+        // Development Websites created before RSVP composition existed have no
+        // canonical child flow. Return the one current default rather than
+        // exposing obsolete semantic fields or making the whole builder unloadable.
+        if ($sectionType === 'rsvp' && ! is_array($content['compositions'] ?? null)) {
+            return $definition->defaultContent;
         }
 
         return match ($sectionType) {

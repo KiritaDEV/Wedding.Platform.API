@@ -45,6 +45,26 @@ class WebsiteSectionMediaReferenceExtractorTest extends TestCase
         ], $this->extractor->extract('blank-section', 'blank', $content));
     }
 
+    public function test_extracts_rsvp_composition_media_without_treating_the_runtime_reference_as_media(): void
+    {
+        $content = $this->content([
+            ['id' => 'direct', 'type' => 'media', 'editorName' => 'Media 1', 'items' => [['id' => 'one', 'type' => 'image', 'mediaId' => 'rsvp-media-one', 'alt' => 'One']]],
+            ['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [[
+                'id' => 'nested', 'type' => 'media', 'editorName' => 'Media 2', 'items' => [['id' => 'two', 'type' => 'image', 'mediaId' => 'rsvp-media-two', 'alt' => 'Two']],
+            ]]],
+        ]);
+        $content['compositions']['shared']['childFlow']['order'] = [
+            ['kind' => 'element', 'id' => 'direct'],
+            ['kind' => 'specialized', 'key' => 'content'],
+            ['kind' => 'element', 'id' => 'group'],
+        ];
+
+        $this->assertSame([
+            ['mediaId' => 'rsvp-media-one', 'reference' => ['type' => 'sectionMedia', 'compositionScope' => 'shared', 'elementId' => 'direct', 'itemId' => 'one']],
+            ['mediaId' => 'rsvp-media-two', 'reference' => ['type' => 'sectionMedia', 'compositionScope' => 'shared', 'elementId' => 'nested', 'itemId' => 'two']],
+        ], $this->extractor->extract('rsvp', 'rsvp', $content));
+    }
+
     public function test_extracts_direct_and_nested_group_background_media(): void
     {
         $content = $this->content([[

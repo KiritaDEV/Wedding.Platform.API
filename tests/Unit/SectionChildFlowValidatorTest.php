@@ -100,6 +100,67 @@ class SectionChildFlowValidatorTest extends TestCase
         }
     }
 
+    public function test_rsvp_requires_one_specialized_slot_and_restricts_generic_tree_types(): void
+    {
+        $validator = app(WebsiteSectionContentValidator::class);
+        $text = ['id' => 'text', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Kindly Respond']]]]]];
+        $valid = $this->compositionContent(['elements' => [$text], 'order' => [
+            ['kind' => 'element', 'id' => 'text'],
+            ['kind' => 'specialized', 'key' => 'content'],
+        ]]);
+        $this->assertSame($valid, $validator->validate('rsvp', $valid, ['text', 'divider', 'media', 'compositionGroup']));
+
+        $invalid = [
+            ['semantic' => ['heading' => 'Legacy'], 'compositions' => $valid['compositions']],
+            $this->compositionContent(['elements' => [$text], 'order' => [['kind' => 'element', 'id' => 'text']]]),
+            $this->compositionContent(['elements' => [$text], 'order' => [['kind' => 'specialized', 'key' => 'content'], ['kind' => 'specialized', 'key' => 'content'], ['kind' => 'element', 'id' => 'text']]]),
+            $this->compositionContent(['elements' => [['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1']]]], 'order' => [['kind' => 'element', 'id' => 'group'], ['kind' => 'specialized', 'key' => 'content']]]),
+        ];
+        foreach ($invalid as $content) {
+            try {
+                $validator->validate('rsvp', $content, ['text', 'divider', 'media', 'compositionGroup']);
+                $this->fail('Invalid RSVP composition was accepted.');
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function test_rsvp_accepts_only_canonical_sparse_runtime_appearance(): void
+    {
+        $validator = app(WebsiteSectionContentValidator::class);
+        $content = $this->compositionContent(['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]);
+        $content['semantic']['runtimeAppearance'] = [
+            'status' => ['fontFamilyId' => 'inter', 'fontSize' => '2xl', 'colorId' => 'heading', 'responsive' => ['mobile' => ['fontSize' => 'l', 'alignment' => 'center']]],
+            'guestName' => ['fontWeight' => 700],
+            'responseLabel' => ['textTransform' => 'uppercase'],
+            'supporting' => ['lineHeight' => 'relaxed'],
+            'choice' => ['layout' => 'segmented', 'selected' => ['emphasis' => 'bold', 'borderColorId' => 'accent'], 'responsive' => ['mobile' => ['direction' => 'column', 'size' => 'large']]],
+            'action' => ['variant' => 'outline', 'radius' => 'pill', 'typography' => ['fontFamilyId' => 'inter'], 'responsive' => ['mobile' => ['width' => 'full', 'alignment' => 'center']]],
+        ];
+        $this->assertSame($content, $validator->validate('rsvp', $content, null, ['inter'], ['heading', 'accent']));
+
+        foreach ([
+            ['unknown' => []],
+            ['status' => ['unknown' => true]],
+            ['choice' => ['layout' => 'buttons']],
+            ['action' => ['width' => 'overflow']],
+            ['previewState' => 'completed'],
+            ['guests' => [['name' => 'Alex Santos']]],
+            ['status' => ['fontFamilyId' => 'unknown']],
+            ['choice' => ['selected' => ['borderColorId' => 'unknown']]],
+        ] as $runtimeAppearance) {
+            $invalid = $this->compositionContent(['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]);
+            $invalid['semantic']['runtimeAppearance'] = $runtimeAppearance;
+            try {
+                $validator->validate('rsvp', $invalid, null, ['inter'], ['heading', 'accent']);
+                $this->fail('Invalid RSVP runtime appearance was accepted.');
+            } catch (ValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     private function content(): array
     {
         return [

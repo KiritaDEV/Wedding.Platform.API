@@ -483,9 +483,10 @@ final class WebsiteCapabilityResolver
         $allowedElements = match ($sectionId) {
             'blank', 'hero' => [WebsiteElementType::Text->value, WebsiteElementType::Date->value, WebsiteElementType::Accordion->value, WebsiteElementType::Schedule->value, WebsiteElementType::People->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
             'gallery' => [WebsiteElementType::Text->value, WebsiteElementType::Divider->value, WebsiteElementType::CompositionGroup->value],
+            'rsvp' => [WebsiteElementType::Text->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
             default => null,
         };
-        if ($allowedElements !== null && $template->key === WebsiteTemplateRegistry::MODERN_EDITORIAL_V1) {
+        if ($allowedElements !== null && $sectionId !== 'rsvp' && $template->key === WebsiteTemplateRegistry::MODERN_EDITORIAL_V1) {
             $allowedElements = array_values(array_filter($allowedElements, fn (string $type): bool => $type !== WebsiteElementType::Divider->value));
         }
 
@@ -494,7 +495,7 @@ final class WebsiteCapabilityResolver
             appearanceControls: $controls,
             defaultPresentation: $presentationDefinition['default'] ?? null,
             presentations: $presentations,
-            contextDefaults: in_array($sectionId, ['blank', 'hero', 'gallery'], true) ? new ContextDefaultsCapability([], []) : $this->contextDefaultsForSection($template, $sectionId),
+            contextDefaults: in_array($sectionId, ['blank', 'hero', 'gallery', 'rsvp'], true) ? new ContextDefaultsCapability([], []) : $this->contextDefaultsForSection($template, $sectionId),
             allowedElementTypes: $allowedElements,
             maximumElementCount: $allowedElements === null ? null : 20,
             decorativeAppearance: in_array($sectionId, ['hero', 'gallery', 'rsvp', 'blank'], true) ? $this->sectionDecorativeAppearance($template) : null,

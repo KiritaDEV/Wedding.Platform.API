@@ -10,6 +10,7 @@ use App\Models\MediaAsset;
 use App\Models\User;
 use App\Models\WebsiteSection;
 use App\Website\WebsiteSectionContentValidator;
+use App\Website\WebsiteSectionRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +44,45 @@ class WebsiteDraftApiTest extends TestCase
         $this->actingAs($admin)->getJson($url)->assertOk();
         $this->actingAs($unrelated)->getJson($url)->assertForbidden();
         $this->actingAs($superAdmin)->getJson($url)->assertOk();
+    }
+
+    public function test_draft_get_defaults_pre_composition_rsvp_content_to_the_single_canonical_contract(): void
+    {
+        [$event, $owner] = $this->createEvent();
+        $rsvp = $event->website->sections()->where('type', 'rsvp')->sole();
+        $rsvp->update(['content' => ['semantic' => [
+            'heading' => 'Obsolete heading',
+            'description' => 'Obsolete description',
+            'buttonLabel' => 'Obsolete action',
+        ]]]);
+
+        $response = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk();
+        $serialized = collect($response->json('data.sections'))->firstWhere('type', 'rsvp')['content'];
+        $expected = app(WebsiteSectionRegistry::class)->get('rsvp')->defaultContent;
+
+        $this->assertSame($expected['compositions'], $serialized['compositions']);
+        $this->assertSame([], $serialized['semantic']);
+        $this->assertStringNotContainsString('Obsolete', $response->getContent());
+        $this->assertSame(['semantic' => ['heading' => 'Obsolete heading', 'description' => 'Obsolete description', 'buttonLabel' => 'Obsolete action']], $rsvp->refresh()->content);
+    }
+
+    public function test_sparse_rsvp_runtime_appearance_saves_and_reloads_without_materializing_theme_defaults(): void
+    {
+        [$event, $owner] = $this->createEvent();
+        $rsvp = $event->website->sections()->where('type', 'rsvp')->sole();
+        $content = $rsvp->content;
+        $content['semantic'] = ['runtimeAppearance' => [
+            'status' => ['fontSize' => '3xl', 'responsive' => ['mobile' => ['fontSize' => 'l']]],
+            'choice' => ['radius' => 'pill', 'responsive' => ['mobile' => ['direction' => 'column']]],
+            'action' => ['variant' => 'outline', 'responsive' => ['mobile' => ['width' => 'full']]],
+        ]];
+
+        $url = "/api/events/{$event->id}/website/sections/{$rsvp->id}";
+        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->assertSame($content, $rsvp->refresh()->content);
+        $serialized = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('type', 'rsvp')['content'];
+        $this->assertSame($content, $serialized);
+        $this->assertArrayNotHasKey('fontFamilyId', $serialized['semantic']['runtimeAppearance']['status']);
     }
 
     public function test_blank_text_and_rich_text_child_flows_round_trip_without_a_schema_bump(): void

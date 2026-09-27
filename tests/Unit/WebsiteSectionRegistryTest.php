@@ -37,8 +37,17 @@ class WebsiteSectionRegistryTest extends TestCase
     {
         $registry = new WebsiteSectionRegistry;
         $this->assertSame(['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]], $registry->get('gallery')->defaultContent);
-        $this->assertSame(['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']], $registry->get('rsvp')->defaultContent);
+        $rsvp = $registry->get('rsvp')->defaultContent;
+        $this->assertSame([], $rsvp['semantic']);
+        $this->assertSame(['element', 'element', 'specialized'], array_column($rsvp['compositions']['shared']['childFlow']['order'], 'kind'));
+        $this->assertSame('content', $rsvp['compositions']['shared']['childFlow']['order'][2]['key']);
+        $this->assertSame(['Kindly Respond', 'We would be honored to celebrate this day with you.'], array_map(
+            static fn (array $element): string => $element['document']['children'][0]['children'][0]['text'],
+            $rsvp['compositions']['shared']['childFlow']['elements'],
+        ));
         $this->assertArrayHasKey('compositions', $registry->get('gallery')->defaultContent);
-        $this->assertArrayNotHasKey('compositions', $registry->get('rsvp')->defaultContent);
+        $this->assertArrayNotHasKey('heading', $rsvp['semantic']);
+        $this->assertArrayNotHasKey('description', $rsvp['semantic']);
+        $this->assertArrayNotHasKey('buttonLabel', $rsvp['semantic']);
     }
 }

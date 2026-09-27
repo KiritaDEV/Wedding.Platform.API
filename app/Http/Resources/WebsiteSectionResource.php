@@ -131,7 +131,7 @@ class WebsiteSectionResource extends JsonResource
     {
         $content = $this->normalizedContent;
 
-        if (in_array($this->type, ['hero', 'blank'], true) && ($content['semantic'] ?? null) === []) {
+        if (in_array($this->type, ['hero', 'rsvp', 'blank'], true) && ($content['semantic'] ?? null) === []) {
             $content['semantic'] = (object) [];
         }
 
