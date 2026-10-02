@@ -38,11 +38,15 @@ class WebsiteSectionResource extends JsonResource
         if ($template?->presentationFallbackFor($this->type, $appearance['presentation'] ?? '') !== null) {
             $appearance = $template->normalizeSectionAppearance($this->type, $appearance);
         }
+        if ($this->type === 'rsvp') {
+            $appearance = array_intersect_key($appearance, array_flip(['decorativeAppearance', 'innerSpacing', 'animation', 'specialized', 'responsive']));
+        }
         if ($this->type === 'blank') {
-            $appearance = array_intersect_key($appearance, array_flip(['backgroundTreatment', 'decorativeAppearance', 'innerSpacing', 'responsive']));
+            $appearance = array_intersect_key($appearance, array_flip(['backgroundTreatment', 'decorativeAppearance', 'innerSpacing', 'responsive', 'animation']));
             $decorativeAppearance = $appearance['decorativeAppearance'] ?? null;
             $innerSpacing = $appearance['innerSpacing'] ?? null;
             $responsive = $appearance['responsive'] ?? null;
+            $animation = $appearance['animation'] ?? null;
             $appearance = [
                 'headingAlignment' => 'inherit',
                 'bodyAlignment' => 'inherit',
@@ -57,6 +61,9 @@ class WebsiteSectionResource extends JsonResource
             }
             if (is_array($responsive) && $responsive !== []) {
                 $appearance['responsive'] = $responsive;
+            }
+            if (is_array($animation) && $animation !== []) {
+                $appearance['animation'] = $animation;
             }
             $designDefaults = [];
         }
@@ -96,10 +103,10 @@ class WebsiteSectionResource extends JsonResource
             'sortOrder' => $this->sort_order,
             'isEnabled' => $this->is_enabled,
             'content' => $this->serializedContent(),
-            'appearance' => $appearanceEnvelope ?? $appearance,
+            'appearance' => $this->type === 'rsvp' && $appearance === [] ? new \stdClass : ($appearanceEnvelope ?? $appearance),
             'designDefaults' => (object) $designDefaults,
             'resolvedDesignContext' => $resolvedContext,
-            'appearanceOptions' => $template?->appearanceOptionsFor($this->type),
+            'appearanceOptions' => $this->type === 'rsvp' ? null : $template?->appearanceOptionsFor($this->type),
             'mediaCapability' => $template?->mediaCapabilityFor($this->type),
             'itemMediaCapability' => $template?->itemMediaCapabilityFor($this->type),
             'presentationCapability' => $template?->presentationCapabilityFor($this->type),
@@ -115,9 +122,9 @@ class WebsiteSectionResource extends JsonResource
         if ($this->type !== 'blank') {
             return $appearance;
         }
-        $kept = array_intersect_key($appearance, array_flip(['backgroundTreatment', 'decorativeAppearance', 'innerSpacing', 'responsive']));
+        $kept = array_intersect_key($appearance, array_flip(['backgroundTreatment', 'decorativeAppearance', 'innerSpacing', 'responsive', 'animation']));
         $result = ['headingAlignment' => 'inherit', 'bodyAlignment' => 'inherit', 'backgroundTreatment' => in_array($kept['backgroundTreatment'] ?? null, ['inherit', 'custom'], true) ? $kept['backgroundTreatment'] : 'inherit', 'emphasis' => 'inherit'];
-        foreach (['decorativeAppearance', 'innerSpacing', 'responsive'] as $key) {
+        foreach (['decorativeAppearance', 'innerSpacing', 'responsive', 'animation'] as $key) {
             if (is_array($kept[$key] ?? null) && $kept[$key] !== []) {
                 $result[$key] = $kept[$key];
             }

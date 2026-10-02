@@ -19,7 +19,7 @@ class WebsiteSectionFactory extends Factory
             'sort_order' => fake()->numberBetween(1, 20),
             'is_enabled' => true,
             'content' => [],
-            'appearance' => WebsiteSectionAppearance::DEFAULT,
+            'appearance' => fn (array $attributes): array => ($attributes['type'] ?? null) === 'rsvp' ? [] : WebsiteSectionAppearance::DEFAULT,
         ];
     }
 
@@ -30,7 +30,7 @@ class WebsiteSectionFactory extends Factory
             'content' => app(WebsiteSectionRegistry::class)->get($type)?->defaultContent ?? [],
             'appearance' => in_array($type, ['hero', 'blank'], true)
                 ? ['shared' => WebsiteSectionAppearance::DEFAULT]
-                : WebsiteSectionAppearance::DEFAULT,
+                : ($type === 'rsvp' ? [] : WebsiteSectionAppearance::DEFAULT),
         ]);
     }
 

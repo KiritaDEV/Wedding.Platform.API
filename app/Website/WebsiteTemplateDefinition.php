@@ -13,7 +13,7 @@ final readonly class WebsiteTemplateDefinition
      * @param  array{colorThemes: list<array{key: string, displayName: string}>, fontSets: list<array{key: string, displayName: string}>, artStyles: list<array{key: string, displayName: string}>}  $designOptions
      * @param  array{colorTheme: string, fontSet: string, artStyle: string}  $defaultDesignSettings
      * @param  array<string, array<string, list<array{key: string, displayName: string}>>>  $sectionAppearanceOptions
-     * @param  array<string, array{headingAlignment: string, bodyAlignment: string, backgroundTreatment: string, emphasis: string}>  $sectionAppearanceDefaults
+     * @param  array<string, array<string, string>>  $sectionAppearanceDefaults
      */
     public function __construct(
         public string $key,
@@ -287,7 +287,7 @@ final readonly class WebsiteTemplateDefinition
         return $this->sectionAppearanceOptions[$sectionType] ?? null;
     }
 
-    /** @return array{headingAlignment: string, bodyAlignment: string, backgroundTreatment: string, emphasis: string}|null */
+    /** @return array<string, string>|null */
     public function appearanceDefaultsFor(string $sectionType): ?array
     {
         return $this->sectionAppearanceDefaults[$sectionType] ?? null;

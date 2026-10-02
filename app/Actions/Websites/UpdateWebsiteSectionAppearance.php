@@ -10,6 +10,7 @@ use App\Website\Capabilities\AppearanceControlType;
 use App\Website\Capabilities\SectionCapability;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\ProjectColorLibrary;
+use App\Website\WebsiteAnimation;
 use App\Website\WebsiteSectionAppearance;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -34,15 +35,21 @@ final class UpdateWebsiteSectionAppearance
             $appearanceCustom = array_keys($appearance['custom'] ?? []);
             sort($contentCustom);
             sort($appearanceCustom);
-            if ($contentCustom !== $appearanceCustom || array_diff($appearanceCustom, ['desktop', 'tablet', 'mobile']) !== []) {
+            if (array_diff($contentCustom, $appearanceCustom) !== [] || array_diff($appearanceCustom, ['desktop', 'tablet', 'mobile']) !== []) {
                 throw ValidationException::withMessages(['appearance.custom' => 'Custom composition and appearance branches must be paired.']);
+            }
+            foreach (array_diff($appearanceCustom, $contentCustom) as $viewport) {
+                if (! array_key_exists('animation', $appearance['custom'][$viewport])
+                    || $this->withoutAnimation($appearance['custom'][$viewport]) !== $this->withoutAnimation($appearance['shared'])) {
+                    throw ValidationException::withMessages(["appearance.custom.{$viewport}" => 'An appearance-only device branch may differ from shared appearance only by animation.']);
+                }
             }
             $normalized = ['shared' => $this->normalizeBranch($section, $appearance['shared'])];
             foreach ($appearance['custom'] ?? [] as $viewport => $branch) {
                 if (! is_array($branch)) {
                     throw ValidationException::withMessages(["appearance.custom.{$viewport}" => 'Custom appearance must be a complete object.']);
                 }
-                $normalized['custom'][$viewport] = $this->normalizeBranch($section, $branch);
+                $normalized['custom'][$viewport] = $this->normalizeBranch($section, $branch, true);
             }
             $assetIds = collect([$normalized['shared'], ...array_values($normalized['custom'] ?? [])])
                 ->flatMap(fn (array $branch): array => BackgroundMedia::assetIds($branch['backgroundMedia'] ?? null))->unique()->values();
@@ -64,16 +71,16 @@ final class UpdateWebsiteSectionAppearance
         return $this->applyBranch($section, $appearance, $persist);
     }
 
-    private function normalizeBranch(WebsiteSection $section, array $appearance): array
+    private function normalizeBranch(WebsiteSection $section, array $appearance, bool $preserveExplicitAnimationNone = false): array
     {
         $copy = clone $section;
         $copy->appearance = $appearance;
-        $this->applyBranch($copy, $appearance, false);
+        $this->applyBranch($copy, $appearance, false, $preserveExplicitAnimationNone);
 
         return $copy->appearance;
     }
 
-    private function applyBranch(WebsiteSection $section, array $appearance, bool $persist): WebsiteSection
+    private function applyBranch(WebsiteSection $section, array $appearance, bool $persist, bool $preserveExplicitAnimationNone = false): WebsiteSection
     {
         $storedDesignDefaults = $section->appearance['designDefaults'] ?? null;
         $section->loadMissing('website');
@@ -83,9 +90,35 @@ final class UpdateWebsiteSectionAppearance
             throw ValidationException::withMessages(['appearance' => 'Section appearance is not supported by the assigned Template.']);
         }
 
-        $expectedKeys = ['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis'];
+        $expectedKeys = $section->type === 'rsvp'
+            ? []
+            : ['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis'];
+        if (array_key_exists('animation', $appearance)) {
+            $normalizedAnimation = WebsiteAnimation::normalize($appearance['animation'], 'appearance.animation', $preserveExplicitAnimationNone);
+            if ($normalizedAnimation === null) {
+                unset($appearance['animation']);
+            } else {
+                $appearance['animation'] = $normalizedAnimation;
+                $expectedKeys[] = 'animation';
+            }
+        }
+        if (array_key_exists('specialized', $appearance)) {
+            if ($section->type !== 'rsvp' || ! is_array($appearance['specialized']) || array_diff(array_keys($appearance['specialized']), ['content']) !== []
+                || ! is_array($appearance['specialized']['content'] ?? null) || array_diff(array_keys($appearance['specialized']['content']), ['animation']) !== []) {
+                throw ValidationException::withMessages(['appearance.specialized' => 'Specialized appearance is supported only for the RSVP content unit.']);
+            }
+            $normalizedAnimation = array_key_exists('animation', $appearance['specialized']['content'])
+                ? WebsiteAnimation::normalize($appearance['specialized']['content']['animation'], 'appearance.specialized.content.animation')
+                : null;
+            if ($normalizedAnimation === null) {
+                unset($appearance['specialized']);
+            } else {
+                $appearance['specialized'] = ['content' => ['animation' => $normalizedAnimation]];
+                $expectedKeys[] = 'specialized';
+            }
+        }
         if ($section->type === 'gallery') {
-            foreach (['columns', 'gap', 'aspectRatio'] as $setting) {
+            foreach (['columns', 'gap', 'aspectRatio', 'radius', 'shadow'] as $setting) {
                 if (! array_key_exists($setting, $appearance)) {
                     continue;
                 }
@@ -93,11 +126,24 @@ final class UpdateWebsiteSectionAppearance
                     'columns' => is_int($appearance[$setting]) && $appearance[$setting] >= 1 && $appearance[$setting] <= 6,
                     'gap' => in_array($appearance[$setting], ['small', 'medium', 'large'], true),
                     'aspectRatio' => in_array($appearance[$setting], ['square', 'portrait', 'landscape'], true),
+                    'radius' => in_array($appearance[$setting], ['square', 'soft', 'rounded', 'pill'], true),
+                    'shadow' => in_array($appearance[$setting], ['none', 'soft', 'medium', 'strong'], true),
                 };
                 if (! $valid) {
                     throw ValidationException::withMessages(["appearance.{$setting}" => "The selected Gallery {$setting} is invalid."]);
                 }
                 $expectedKeys[] = $setting;
+            }
+            if (array_key_exists('galleryContentInnerSpacing', $appearance)) {
+                if (! is_array($appearance['galleryContentInnerSpacing'])) {
+                    throw ValidationException::withMessages(['appearance.galleryContentInnerSpacing' => 'Gallery content inner spacing must use the shared four-sided spacing contract.']);
+                }
+                $appearance['galleryContentInnerSpacing'] = $this->normalizeInnerSpacing($appearance['galleryContentInnerSpacing'], 'appearance.galleryContentInnerSpacing');
+                if ($appearance['galleryContentInnerSpacing'] === []) {
+                    unset($appearance['galleryContentInnerSpacing']);
+                } else {
+                    $expectedKeys[] = 'galleryContentInnerSpacing';
+                }
             }
         }
         $actualKeys = array_keys($appearance);
@@ -135,7 +181,43 @@ final class UpdateWebsiteSectionAppearance
             $expectedKeys[] = 'overlayStrength';
         }
         if (array_key_exists('responsive', $appearance)) {
-            throw ValidationException::withMessages(['appearance.responsive' => 'Device-specific authored properties require a custom Section appearance.']);
+            if ($section->type !== 'rsvp' || ! is_array($appearance['responsive']) || array_diff(array_keys($appearance['responsive']), ['tablet', 'mobile']) !== []) {
+                throw ValidationException::withMessages(['appearance.responsive' => 'Device-specific authored properties require a supported exact-device appearance owner.']);
+            }
+            foreach ($appearance['responsive'] as $viewport => &$override) {
+                if (! is_array($override) || array_diff(array_keys($override), ['animation', 'specialized']) !== []) {
+                    throw ValidationException::withMessages(["appearance.responsive.{$viewport}" => 'RSVP responsive appearance supports only animation ownership.']);
+                }
+                if (array_key_exists('animation', $override)) {
+                    $normalized = WebsiteAnimation::normalize($override['animation'], "appearance.responsive.{$viewport}.animation", true);
+                    if ($normalized === null) {
+                        unset($override['animation']);
+                    } else {
+                        $override['animation'] = $normalized;
+                    }
+                }
+                if (array_key_exists('specialized', $override)) {
+                    if (! is_array($override['specialized']) || array_diff(array_keys($override['specialized']), ['content']) !== []
+                        || ! is_array($override['specialized']['content'] ?? null) || array_diff(array_keys($override['specialized']['content']), ['animation']) !== []) {
+                        throw ValidationException::withMessages(["appearance.responsive.{$viewport}.specialized" => 'RSVP specialized responsive appearance is invalid.']);
+                    }
+                    $normalized = array_key_exists('animation', $override['specialized']['content'])
+                        ? WebsiteAnimation::normalize($override['specialized']['content']['animation'], "appearance.responsive.{$viewport}.specialized.content.animation", true)
+                        : null;
+                    if ($normalized === null) {
+                        unset($override['specialized']);
+                    } else {
+                        $override['specialized'] = ['content' => ['animation' => $normalized]];
+                    }
+                }
+            }
+            unset($override);
+            $appearance['responsive'] = array_filter($appearance['responsive'], fn (array $override): bool => $override !== []);
+            if ($appearance['responsive'] === []) {
+                unset($appearance['responsive']);
+            } else {
+                $expectedKeys[] = 'responsive';
+            }
         }
         if (array_key_exists('decorativeAppearance', $appearance)) {
             if (isset($appearance['decorativeAppearance']['background']['customColor']) && is_string($appearance['decorativeAppearance']['background']['customColor'])) {
@@ -185,10 +267,10 @@ final class UpdateWebsiteSectionAppearance
             }
         }
         if (array_key_exists('innerSpacing', $appearance)) {
-            if (! in_array($section->type, ['hero', 'blank'], true) || ! is_array($appearance['innerSpacing'])) {
+            if (! in_array($section->type, ['hero', 'gallery', 'rsvp', 'blank'], true) || ! is_array($appearance['innerSpacing'])) {
                 throw ValidationException::withMessages(['appearance.innerSpacing' => 'Section inner spacing must use the shared four-sided spacing contract.']);
             }
-            $appearance['innerSpacing'] = $this->normalizeInnerSpacing($appearance['innerSpacing']);
+            $appearance['innerSpacing'] = $this->normalizeInnerSpacing($appearance['innerSpacing'], 'appearance.innerSpacing');
             if ($appearance['innerSpacing'] === []) {
                 unset($appearance['innerSpacing']);
             } else {
@@ -205,6 +287,9 @@ final class UpdateWebsiteSectionAppearance
         }
 
         foreach (['headingAlignment', 'bodyAlignment', 'backgroundTreatment', 'emphasis'] as $setting) {
+            if ($section->type === 'rsvp') {
+                continue;
+            }
             if (in_array($section->type, ['blank', 'hero'], true)) {
                 $allowed = $setting === 'backgroundTreatment' ? ['inherit', 'custom'] : ['inherit'];
                 if (! in_array($appearance[$setting] ?? null, $allowed, true)) {
@@ -330,7 +415,7 @@ final class UpdateWebsiteSectionAppearance
                     if (! in_array($sectionType, ['hero', 'blank'], true) || ! is_array($value)) {
                         throw ValidationException::withMessages(["appearance.responsive.{$viewport}.innerSpacing" => 'Section inner spacing must use the shared spacing contract.']);
                     }
-                    $this->normalizeInnerSpacing($value);
+                    $this->normalizeInnerSpacing($value, "appearance.responsive.{$viewport}.innerSpacing");
                 } elseif ($setting === 'contentPosition') {
                     if ($sectionType !== 'hero' || ! $this->validHeroContentPosition($value)) {
                         throw ValidationException::withMessages(["appearance.responsive.{$viewport}.contentPosition" => 'The selected Hero content position is invalid.']);
@@ -349,15 +434,23 @@ final class UpdateWebsiteSectionAppearance
         return is_string($value) && in_array($value, ['top-start', 'top-center', 'top-end', 'center-start', 'center', 'center-end', 'bottom-start', 'bottom-center', 'bottom-end'], true);
     }
 
+    /** @param array<string,mixed> $appearance @return array<string,mixed> */
+    private function withoutAnimation(array $appearance): array
+    {
+        unset($appearance['animation']);
+
+        return $appearance;
+    }
+
     /** @param array<string, mixed> $value */
-    private function normalizeInnerSpacing(array $value): array
+    private function normalizeInnerSpacing(array $value, string $path): array
     {
         if (array_diff(array_keys($value), ['top', 'right', 'bottom', 'left']) !== []) {
-            throw ValidationException::withMessages(['appearance.innerSpacing' => 'Section inner spacing contains unsupported sides.']);
+            throw ValidationException::withMessages([$path => 'Inner spacing contains unsupported sides.']);
         }
         foreach ($value as $side => $spacing) {
             if (! is_string($spacing) || ! in_array($spacing, ['none', 'xs', 's', 'm', 'l', 'xl'], true)) {
-                throw ValidationException::withMessages(["appearance.innerSpacing.{$side}" => 'The selected inner spacing is invalid.']);
+                throw ValidationException::withMessages(["{$path}.{$side}" => 'The selected inner spacing is invalid.']);
             }
             if ($spacing === 'none') {
                 unset($value[$side]);

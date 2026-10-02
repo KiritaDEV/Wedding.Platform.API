@@ -32,7 +32,9 @@ class WebsiteSectionAppearanceTest extends TestCase
 
         $this->assertCount(3, $event->website->sections);
         $event->website->sections->each(fn ($section) => $this->assertSame(
-            in_array($section->type, ['hero', 'gallery'], true) ? ['shared' => WebsiteSectionAppearance::DEFAULT] : WebsiteSectionAppearance::DEFAULT,
+            in_array($section->type, ['hero', 'gallery'], true)
+                ? ['shared' => WebsiteSectionAppearance::DEFAULT]
+                : ($section->type === 'rsvp' ? [] : WebsiteSectionAppearance::DEFAULT),
             $section->appearance,
         ));
     }
@@ -90,6 +92,44 @@ class WebsiteSectionAppearanceTest extends TestCase
 
         $this->assertSame($appearance, $section->refresh()->appearance);
         $this->assertSame($before, $section->only(['content', 'sort_order', 'is_enabled']));
+    }
+
+    public function test_section_animation_uses_shared_and_exact_device_appearance_owners_without_custom_composition(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $hero = $event->website->sections()->where('type', 'hero')->sole();
+        $shared = [...WebsiteSectionAppearance::DEFAULT, 'animation' => ['entrance' => ['type' => 'fade-up', 'speed' => 'normal']]];
+        $mobile = [...WebsiteSectionAppearance::DEFAULT, 'animation' => ['entrance' => ['type' => 'none', 'delay' => 'long']]];
+        $appearance = ['shared' => $shared, 'custom' => ['mobile' => $mobile]];
+
+        $this->actingAs($owner)
+            ->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", compact('appearance'))
+            ->assertOk()
+            ->assertJsonPath('data.sections.0.appearance.shared.animation.entrance.type', 'fade-up')
+            ->assertJsonPath('data.sections.0.appearance.custom.mobile.animation.entrance.type', 'none')
+            ->assertJsonMissingPath('data.sections.0.appearance.custom.mobile.animation.entrance.delay');
+
+        $stored = $hero->refresh()->appearance;
+        $this->assertSame('none', $stored['custom']['mobile']['animation']['entrance']['type']);
+        $this->assertArrayNotHasKey('mobile', $hero->content['compositions']['custom'] ?? []);
+    }
+
+    public function test_rsvp_section_and_specialized_form_animation_use_appearance_not_semantic_content(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $rsvp = $event->website->sections()->where('type', 'rsvp')->sole();
+        $appearance = [
+            'animation' => ['entrance' => ['type' => 'fade']],
+            'specialized' => ['content' => ['animation' => ['entrance' => ['type' => 'scale-in', 'speed' => 'slow']]]],
+            'responsive' => ['mobile' => ['specialized' => ['content' => ['animation' => ['entrance' => ['type' => 'none']]]]]],
+        ];
+
+        $this->actingAs($owner)
+            ->putJson("/api/events/{$event->id}/website/sections/{$rsvp->id}/appearance", compact('appearance'))
+            ->assertOk();
+
+        $this->assertSame($appearance, $rsvp->refresh()->appearance);
+        $this->assertArrayNotHasKey('animation', $rsvp->content['semantic']);
     }
 
     public function test_hero_surface_appearance_is_sparse_and_rejects_obsolete_presentation_fields(): void
@@ -205,9 +245,9 @@ class WebsiteSectionAppearanceTest extends TestCase
         foreach (['gallery', 'rsvp'] as $type) {
             $section = $event->website->sections()->where('type', $type)->sole();
             $branch = [
-                ...WebsiteSectionAppearance::DEFAULT,
+                ...($type === 'rsvp' ? [] : WebsiteSectionAppearance::DEFAULT),
                 'decorativeAppearance' => [
-                    'background' => ['texture' => 'paper', 'textureStrength' => 55, 'pattern' => 'botanical', 'patternStrength' => 50, 'overlay' => 'warm'],
+                    'background' => ['colorId' => 'terracotta-canvas', 'texture' => 'paper', 'textureStrength' => 55, 'pattern' => 'botanical', 'patternStrength' => 50, 'overlay' => 'warm'],
                     'frame' => ['style' => 'ornamental', 'size' => 200, 'strength' => 0, 'colorId' => 'terracotta-accent'],
                 ],
             ];
@@ -216,6 +256,55 @@ class WebsiteSectionAppearanceTest extends TestCase
             $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
             $this->assertSame($appearance, $section->refresh()->appearance);
         }
+    }
+
+    public function test_rsvp_rejects_obsolete_parent_semantics_and_normalizes_stale_resource_data(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $section = $event->website->sections()->where('type', 'rsvp')->sole();
+        $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+
+        foreach (array_keys(WebsiteSectionAppearance::DEFAULT) as $field) {
+            $this->actingAs($owner)->putJson($url, ['appearance' => [$field => WebsiteSectionAppearance::DEFAULT[$field]]])->assertUnprocessable();
+        }
+
+        $section->appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine']]];
+        $section->save();
+        $serialized = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('type', 'rsvp');
+        $this->assertSame(['decorativeAppearance' => ['frame' => ['style' => 'fine']]], $serialized['appearance']);
+        $this->assertNull($serialized['appearanceOptions']);
+    }
+
+    public function test_rsvp_section_inner_spacing_saves_reloads_and_prunes_none_sides(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $section = $event->website->sections()->where('type', 'rsvp')->sole();
+        $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+        $appearance = ['innerSpacing' => ['top' => 'xl', 'right' => 'none', 'bottom' => 'm', 'left' => 'xs']];
+
+        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+            ->assertJsonPath('data.sections.2.appearance.innerSpacing', ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']);
+        $this->assertSame(['innerSpacing' => ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']], $section->refresh()->appearance);
+
+        foreach ([['top' => 'huge'], ['diagonal' => 'm']] as $innerSpacing) {
+            $this->actingAs($owner)->putJson($url, ['appearance' => compact('innerSpacing')])->assertUnprocessable();
+        }
+    }
+
+    public function test_gallery_section_inner_spacing_saves_reloads_and_prunes_none_sides(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $section = $event->website->sections()->where('type', 'gallery')->sole();
+        $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
+        $base = $section->appearance['shared'];
+        $shared = [...$base, 'innerSpacing' => ['top' => 'xl', 'right' => 'none', 'bottom' => 'm', 'left' => 'xs']];
+        $appearance = ['shared' => $shared];
+
+        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $expected = ['shared' => [...$base, 'innerSpacing' => ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']]];
+        $this->assertSame($expected, $section->refresh()->appearance);
+        $serialized = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('type', 'gallery');
+        $this->assertSame($expected, $serialized['appearance']);
     }
 
     public function test_frame_numeric_boundaries_and_unknown_values_are_rejected(): void

@@ -3,6 +3,7 @@
 namespace App\Website\Elements;
 
 use App\Website\BackgroundMedia;
+use App\Website\WebsiteAnimation;
 use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +14,7 @@ final class CompositionGroupValidator
     public function validate(array $group, Closure $validateChild): array
     {
         $outerSpacing = FourSidedSpacing::extractOuter($group);
+        $animation = WebsiteAnimation::extract($group);
         $opacity = $group['appearance']['backgroundImageOpacity'] ?? null;
         if ($opacity !== null && ! is_int($opacity)) {
             throw ValidationException::withMessages(['element.appearance.backgroundImageOpacity' => 'Group background image opacity must be a JSON integer.']);
@@ -40,6 +42,7 @@ final class CompositionGroupValidator
         if ($outerSpacing !== []) {
             $validated['appearance'] = FourSidedSpacing::restoreOuter($validated['appearance'] ?? [], $outerSpacing);
         }
+        WebsiteAnimation::restore($validated, $animation);
         if (($validated['appearance']['backgroundImageOpacity'] ?? null) === 100) {
             unset($validated['appearance']['backgroundImageOpacity']);
         }

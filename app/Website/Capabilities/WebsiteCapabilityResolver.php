@@ -428,7 +428,7 @@ final class WebsiteCapabilityResolver
             'backgroundTreatment' => 'backgroundTreatments',
             'emphasis' => 'emphasisOptions',
         ] as $id => $group) {
-            if (in_array($sectionId, ['blank', 'hero'], true)) {
+            if (in_array($sectionId, ['blank', 'hero', 'rsvp'], true)) {
                 continue;
             }
             if (isset($appearanceOptions[$group], $appearanceDefaults[$id])) {

@@ -135,7 +135,7 @@ class SectionChildFlowValidatorTest extends TestCase
             'guestName' => ['fontWeight' => 700],
             'responseLabel' => ['textTransform' => 'uppercase'],
             'supporting' => ['lineHeight' => 'relaxed'],
-            'choice' => ['layout' => 'segmented', 'selected' => ['emphasis' => 'bold', 'borderColorId' => 'accent'], 'responsive' => ['mobile' => ['direction' => 'column', 'size' => 'large']]],
+            'choice' => ['layout' => 'segmented', 'selected' => ['emphasis' => 'bold', 'borderColorId' => 'accent', 'borderWidth' => 'thick'], 'unselected' => ['borderWidth' => 'none'], 'responsive' => ['mobile' => ['direction' => 'column', 'size' => 'large']]],
             'action' => ['variant' => 'outline', 'radius' => 'pill', 'typography' => ['fontFamilyId' => 'inter'], 'responsive' => ['mobile' => ['width' => 'full', 'alignment' => 'center']]],
         ];
         $this->assertSame($content, $validator->validate('rsvp', $content, null, ['inter'], ['heading', 'accent']));
@@ -144,6 +144,8 @@ class SectionChildFlowValidatorTest extends TestCase
             ['unknown' => []],
             ['status' => ['unknown' => true]],
             ['choice' => ['layout' => 'buttons']],
+            ['choice' => ['borderWidth' => 'thick']],
+            ['choice' => ['selected' => ['borderWidth' => 'wide']]],
             ['action' => ['width' => 'overflow']],
             ['previewState' => 'completed'],
             ['guests' => [['name' => 'Alex Santos']]],

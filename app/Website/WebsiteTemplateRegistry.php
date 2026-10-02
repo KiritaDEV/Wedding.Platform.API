@@ -60,8 +60,8 @@ final class WebsiteTemplateRegistry
                 'artStyle' => 'minimal',
             ],
             designLibrary: $classicDesignLibrary,
-            sectionAppearanceOptions: array_fill_keys($sectionTypes, WebsiteSectionAppearance::OPTIONS),
-            sectionAppearanceDefaults: array_fill_keys($sectionTypes, WebsiteSectionAppearance::DEFAULT),
+            sectionAppearanceOptions: array_replace(array_fill_keys($sectionTypes, WebsiteSectionAppearance::OPTIONS), ['rsvp' => []]),
+            sectionAppearanceDefaults: array_replace(array_fill_keys($sectionTypes, WebsiteSectionAppearance::DEFAULT), ['rsvp' => []]),
             sectionMediaCapabilities: [
                 'hero' => ['mode' => 'single'],
             ],
@@ -95,8 +95,8 @@ final class WebsiteTemplateRegistry
                 'artStyle' => 'clean',
             ],
             designLibrary: $modernDesignLibrary,
-            sectionAppearanceOptions: array_fill_keys($sectionTypes, WebsiteSectionAppearance::OPTIONS),
-            sectionAppearanceDefaults: array_fill_keys($sectionTypes, WebsiteSectionAppearance::DEFAULT),
+            sectionAppearanceOptions: array_replace(array_fill_keys($sectionTypes, WebsiteSectionAppearance::OPTIONS), ['rsvp' => []]),
+            sectionAppearanceDefaults: array_replace(array_fill_keys($sectionTypes, WebsiteSectionAppearance::DEFAULT), ['rsvp' => []]),
             sectionMediaCapabilities: [
                 'hero' => ['mode' => 'single'],
             ],
@@ -194,6 +194,13 @@ final class WebsiteTemplateRegistry
             foreach ($definition->supportedSectionTypes as $sectionType) {
                 $options = $definition->appearanceOptionsFor($sectionType) ?? [];
                 $defaults = $definition->appearanceDefaultsFor($sectionType) ?? [];
+                if ($sectionType === 'rsvp') {
+                    if ($options !== [] || $defaults !== []) {
+                        throw new LogicException("Template [{$definition->key}] RSVP appearance must use only the shared decorative Section surface contract.");
+                    }
+
+                    continue;
+                }
                 foreach ($appearanceGroups as $setting => $group) {
                     $this->assertOptionGroup($definition->key, "{$sectionType}.{$group}", $options[$group] ?? []);
                     if (! in_array($defaults[$setting] ?? null, array_column($options[$group], 'key'), true)) {

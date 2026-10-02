@@ -159,7 +159,14 @@ final class WebsiteSectionContentValidator
                 return;
             }
             if (array_key_exists('responsive', $value)) {
-                throw ValidationException::withMessages(["{$path}.responsive" => 'Device-specific authored properties require a custom Section composition.']);
+                $responsive = $value['responsive'];
+                $animationOnly = is_array($responsive) && collect($responsive)->every(
+                    fn (mixed $override, mixed $viewport): bool => in_array($viewport, ['tablet', 'mobile'], true)
+                        && is_array($override) && array_diff(array_keys($override), ['animation']) === []
+                );
+                if (! $animationOnly) {
+                    throw ValidationException::withMessages(["{$path}.responsive" => 'Device-specific authored properties require a custom Section composition.']);
+                }
             }
             foreach ($value as $key => $child) {
                 $visit($child, $path.'.'.$key);
@@ -266,15 +273,16 @@ final class WebsiteSectionContentValidator
         }
         $rules = [...$rules, ...$this->runtimeTextRules('content.semantic.runtimeAppearance.action.typography')];
         $rules += [
-            'content.semantic.runtimeAppearance.choice' => ['sometimes', 'array:layout,direction,size,radius,borderWidth,gap,unselected,selected,disabled,responsive'],
+            'content.semantic.runtimeAppearance.choice' => ['sometimes', 'array:layout,direction,size,radius,gap,unselected,selected,disabled,responsive'],
             'content.semantic.runtimeAppearance.choice.layout' => ['sometimes', 'in:cards,segmented'],
             'content.semantic.runtimeAppearance.choice.direction' => ['sometimes', 'in:row,column'],
             'content.semantic.runtimeAppearance.choice.size' => ['sometimes', 'in:compact,normal,large'],
             'content.semantic.runtimeAppearance.choice.radius' => ['sometimes', 'in:square,soft,rounded,pill'],
-            'content.semantic.runtimeAppearance.choice.borderWidth' => ['sometimes', 'in:none,thin,medium,thick'],
             'content.semantic.runtimeAppearance.choice.gap' => ['sometimes', 'in:none,xs,s,m,l,xl'],
-            'content.semantic.runtimeAppearance.choice.unselected' => ['sometimes', 'array:textColorId,backgroundColorId,borderColorId'],
-            'content.semantic.runtimeAppearance.choice.selected' => ['sometimes', 'array:textColorId,backgroundColorId,borderColorId,emphasis'],
+            'content.semantic.runtimeAppearance.choice.unselected' => ['sometimes', 'array:textColorId,backgroundColorId,borderColorId,borderWidth'],
+            'content.semantic.runtimeAppearance.choice.selected' => ['sometimes', 'array:textColorId,backgroundColorId,borderColorId,borderWidth,emphasis'],
+            'content.semantic.runtimeAppearance.choice.unselected.borderWidth' => ['sometimes', 'in:none,thin,medium,thick'],
+            'content.semantic.runtimeAppearance.choice.selected.borderWidth' => ['sometimes', 'in:none,thin,medium,thick'],
             'content.semantic.runtimeAppearance.choice.selected.emphasis' => ['sometimes', 'in:normal,semibold,bold'],
             'content.semantic.runtimeAppearance.choice.disabled' => ['sometimes', 'array:opacity'],
             'content.semantic.runtimeAppearance.choice.disabled.opacity' => ['sometimes', 'in:soft,muted'],

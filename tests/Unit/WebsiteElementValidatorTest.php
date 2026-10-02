@@ -43,6 +43,39 @@ class WebsiteElementValidatorTest extends TestCase
         }
     }
 
+    public function test_canonical_blocks_reuse_sparse_exact_device_animation_appearance(): void
+    {
+        $elements = [
+            ['id' => 'text', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]]],
+            ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1'],
+            ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => []],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => []],
+            ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => []],
+            ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => []],
+            ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1'],
+            ['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => []],
+        ];
+        $appearance = [
+            'animation' => ['entrance' => ['type' => 'fade-up', 'speed' => 'normal', 'delay' => 'short']],
+            'responsive' => ['mobile' => ['animation' => ['entrance' => ['type' => 'none', 'delay' => 'long']]]],
+        ];
+        $expected = [
+            'animation' => $appearance['animation'],
+            'responsive' => ['mobile' => ['animation' => ['entrance' => ['type' => 'none']]]],
+        ];
+
+        foreach ($elements as $element) {
+            try {
+                $validated = $this->validator->validate([...$element, 'appearance' => $appearance]);
+            } catch (ValidationException $exception) {
+                $this->fail("{$element['type']} rejected canonical animation: ".json_encode($exception->errors()));
+            }
+            $this->assertSame($expected, $validated['appearance']);
+            $this->assertInvalid([...$element, 'appearance' => ['animation' => ['entrance' => ['type' => 'fade', 'duration' => 300]]]]);
+            $this->assertInvalid([...$element, 'appearance' => ['animation' => ['entrance' => ['type' => 'fade'], 'responsive' => []]]]);
+        }
+    }
+
     public function test_generic_blocks_accept_strict_responsive_outer_spacing_and_normalize_sparse_defaults(): void
     {
         $elements = [

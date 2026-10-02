@@ -3,6 +3,7 @@
 namespace App\Website\Elements;
 
 use App\Website\Capabilities\PlatformFontRegistry;
+use App\Website\WebsiteAnimation;
 use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -84,6 +85,9 @@ final class WebsiteElementValidator
         $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? FourSidedSpacing::extractOuter($element)
             : [];
+        $animation = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)
+            ? WebsiteAnimation::extract($element)
+            : [];
 
         $rules = match ($type) {
             WebsiteElementType::Heading => $this->textRules('heading', 255),
@@ -113,6 +117,7 @@ final class WebsiteElementValidator
         if ($spacing !== []) {
             $validated['appearance'] = FourSidedSpacing::restoreOuter($validated['appearance'] ?? [], $spacing);
         }
+        WebsiteAnimation::restore($validated, $animation);
 
         if ($type === WebsiteElementType::Cta && isset($validated['action']['sectionId'])) {
             $validated['action']['sectionId'] = trim($validated['action']['sectionId']);

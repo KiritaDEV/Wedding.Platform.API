@@ -73,7 +73,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = $rsvp->content;
         $content['semantic'] = ['runtimeAppearance' => [
             'status' => ['fontSize' => '3xl', 'responsive' => ['mobile' => ['fontSize' => 'l']]],
-            'choice' => ['radius' => 'pill', 'responsive' => ['mobile' => ['direction' => 'column']]],
+            'choice' => ['radius' => 'pill', 'selected' => ['borderWidth' => 'thick'], 'unselected' => ['borderWidth' => 'none'], 'responsive' => ['mobile' => ['direction' => 'column']]],
             'action' => ['variant' => 'outline', 'responsive' => ['mobile' => ['width' => 'full']]],
         ]];
 
