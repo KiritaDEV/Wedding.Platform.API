@@ -114,6 +114,30 @@ class WebsiteSectionAppearanceTest extends TestCase
         $this->assertArrayNotHasKey('mobile', $hero->content['compositions']['custom'] ?? []);
     }
 
+    public function test_gallery_item_animation_uses_gallery_appearance_ownership_and_strict_sparse_contract(): void
+    {
+        [$event, $owner] = $this->eventWithOwner();
+        $gallery = $event->website->sections()->where('type', 'gallery')->sole();
+        $shared = [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'fade-up', 'speed' => 'normal', 'stagger' => 'short']]];
+        $mobile = [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'none', 'speed' => 'slow', 'stagger' => 'long']]];
+        $appearance = ['shared' => $shared, 'custom' => ['mobile' => $mobile]];
+        $url = "/api/events/{$event->id}/website/sections/{$gallery->id}/appearance";
+
+        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+            ->assertJsonPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.type', 'fade-up')
+            ->assertJsonPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.stagger', 'short')
+            ->assertJsonMissingPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.speed')
+            ->assertJsonPath('data.sections.1.appearance.custom.mobile.galleryItemAnimation.entrance.type', 'none')
+            ->assertJsonMissingPath('data.sections.1.appearance.custom.mobile.galleryItemAnimation.entrance.speed');
+
+        foreach ([60, 'custom'] as $stagger) {
+            $invalid = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'fade', 'stagger' => $stagger]]]];
+            $this->actingAs($owner)->putJson($url, ['appearance' => $invalid])->assertUnprocessable();
+        }
+        $unknown = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'fade', 'delay' => 'short']]]];
+        $this->actingAs($owner)->putJson($url, ['appearance' => $unknown])->assertUnprocessable();
+    }
+
     public function test_rsvp_section_and_specialized_form_animation_use_appearance_not_semantic_content(): void
     {
         [$event, $owner] = $this->eventWithOwner();

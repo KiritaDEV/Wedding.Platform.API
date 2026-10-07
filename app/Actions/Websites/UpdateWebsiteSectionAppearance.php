@@ -9,6 +9,7 @@ use App\Website\Capabilities\AppearanceControlCapability;
 use App\Website\Capabilities\AppearanceControlType;
 use App\Website\Capabilities\SectionCapability;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
+use App\Website\GalleryItemAnimation;
 use App\Website\ProjectColorLibrary;
 use App\Website\WebsiteAnimation;
 use App\Website\WebsiteSectionAppearance;
@@ -39,7 +40,7 @@ final class UpdateWebsiteSectionAppearance
                 throw ValidationException::withMessages(['appearance.custom' => 'Custom composition and appearance branches must be paired.']);
             }
             foreach (array_diff($appearanceCustom, $contentCustom) as $viewport) {
-                if (! array_key_exists('animation', $appearance['custom'][$viewport])
+                if (! array_key_exists('animation', $appearance['custom'][$viewport]) && ! array_key_exists('galleryItemAnimation', $appearance['custom'][$viewport])
                     || $this->withoutAnimation($appearance['custom'][$viewport]) !== $this->withoutAnimation($appearance['shared'])) {
                     throw ValidationException::withMessages(["appearance.custom.{$viewport}" => 'An appearance-only device branch may differ from shared appearance only by animation.']);
                 }
@@ -100,6 +101,18 @@ final class UpdateWebsiteSectionAppearance
             } else {
                 $appearance['animation'] = $normalizedAnimation;
                 $expectedKeys[] = 'animation';
+            }
+        }
+        if (array_key_exists('galleryItemAnimation', $appearance)) {
+            if ($section->type !== 'gallery') {
+                throw ValidationException::withMessages(['appearance.galleryItemAnimation' => 'Gallery item animation is supported only by Gallery Sections.']);
+            }
+            $normalizedGalleryAnimation = GalleryItemAnimation::normalize($appearance['galleryItemAnimation'], 'appearance.galleryItemAnimation', $preserveExplicitAnimationNone);
+            if ($normalizedGalleryAnimation === null) {
+                unset($appearance['galleryItemAnimation']);
+            } else {
+                $appearance['galleryItemAnimation'] = $normalizedGalleryAnimation;
+                $expectedKeys[] = 'galleryItemAnimation';
             }
         }
         if (array_key_exists('specialized', $appearance)) {
@@ -438,6 +451,7 @@ final class UpdateWebsiteSectionAppearance
     private function withoutAnimation(array $appearance): array
     {
         unset($appearance['animation']);
+        unset($appearance['galleryItemAnimation']);
 
         return $appearance;
     }
