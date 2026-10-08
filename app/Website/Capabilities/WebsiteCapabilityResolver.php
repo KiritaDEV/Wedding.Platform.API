@@ -481,7 +481,7 @@ final class WebsiteCapabilityResolver
         }
 
         $allowedElements = match ($sectionId) {
-            'blank', 'hero' => [WebsiteElementType::Text->value, WebsiteElementType::Date->value, WebsiteElementType::Accordion->value, WebsiteElementType::Schedule->value, WebsiteElementType::People->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
+            'blank', 'hero' => [WebsiteElementType::Text->value, WebsiteElementType::Date->value, WebsiteElementType::Accordion->value, WebsiteElementType::Schedule->value, WebsiteElementType::People->value, WebsiteElementType::Countdown->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
             'gallery' => [WebsiteElementType::Text->value, WebsiteElementType::Divider->value, WebsiteElementType::CompositionGroup->value],
             'rsvp' => [WebsiteElementType::Text->value, WebsiteElementType::Divider->value, WebsiteElementType::Media->value, WebsiteElementType::CompositionGroup->value],
             default => null,

@@ -46,6 +46,7 @@ class PublicEventSiteResource extends JsonResource
                 'eventDate' => $this->event_date?->toDateString(),
                 'startTime' => $this->start_time === null ? null : substr($this->start_time, 0, 5),
                 'timeZone' => $this->time_zone,
+                'startsAtUtc' => $this->startsAtUtc()?->format('Y-m-d\TH:i:s\Z'),
             ],
             'website' => $draft,
         ];

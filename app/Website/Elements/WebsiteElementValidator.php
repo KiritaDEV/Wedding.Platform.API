@@ -30,7 +30,7 @@ final class WebsiteElementValidator
     private function validateAtDepth(array $element, int $depth): array
     {
         $type = $this->elementType($element);
-        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
+        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
             && is_string($element['editorName'] ?? null)) {
             $element['editorName'] = $this->normalizeEditorName($element['editorName']);
         }
@@ -82,10 +82,10 @@ final class WebsiteElementValidator
             $this->restoreCanonicalEmptyTextRuns($element);
         }
 
-        $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)
+        $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? FourSidedSpacing::extractOuter($element)
             : [];
-        $animation = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)
+        $animation = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? WebsiteAnimation::extract($element)
             : [];
 
@@ -103,11 +103,11 @@ final class WebsiteElementValidator
             WebsiteElementType::Cta => $this->ctaRules($element),
             WebsiteElementType::EventDate => $this->baseRules('eventDate'),
             WebsiteElementType::EventTime => $this->baseRules('eventTime'),
-            WebsiteElementType::Countdown => $this->baseRules('countdown'),
+            WebsiteElementType::Countdown => $this->countdownElementRules($element),
             WebsiteElementType::CompositionGroup => throw new \LogicException('Composition Groups are validated separately.'),
         };
 
-        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Media, WebsiteElementType::Divider], true)) {
+        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)) {
             $rules['element.isHidden'] = ['sometimes', 'boolean'];
             $rules['element.editorName'] = ['required', 'string', 'max:80', 'not_regex:/^\s*$/u'];
         }
@@ -155,6 +155,60 @@ final class WebsiteElementValidator
         }
         if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date], true)) {
             $this->assertTextFontTuple($validated);
+        }
+        if ($type === WebsiteElementType::Countdown) {
+            foreach (['numbers', 'labels'] as $role) {
+                $roleElement = ['appearance' => $validated['appearance'][$role] ?? []];
+                $this->assertTextFontTuple($roleElement);
+                foreach ([['textShadow', 'textShadowColorId'], ['glow', 'glowColorId']] as [$effect, $color]) {
+                    if (($validated['appearance'][$role][$effect] ?? 'none') === 'none') {
+                        unset($validated['appearance'][$role][$effect], $validated['appearance'][$role][$color]);
+                    }
+                }
+            }
+            foreach (['days', 'hours', 'minutes', 'seconds'] as $unit) {
+                if (($validated['units'][$unit] ?? true) === true) {
+                    unset($validated['units'][$unit]);
+                }
+                if (isset($validated['labels'][$unit])) {
+                    $validated['labels'][$unit] = trim($validated['labels'][$unit]);
+                    if ($validated['labels'][$unit] === '' || $validated['labels'][$unit] === ucfirst($unit)) {
+                        unset($validated['labels'][$unit]);
+                    }
+                }
+            }
+            if (($validated['units'] ?? []) === []) {
+                unset($validated['units']);
+            }
+            if (($validated['labels'] ?? []) === []) {
+                unset($validated['labels']);
+            }
+            foreach (['direction' => 'horizontal', 'alignment' => 'center', 'gap' => 'm'] as $field => $default) {
+                if (($validated['appearance'][$field] ?? null) === $default) {
+                    unset($validated['appearance'][$field]);
+                }
+            }
+            foreach (['numbers', 'labels'] as $role) {
+                if (($validated['appearance'][$role] ?? null) === []) {
+                    unset($validated['appearance'][$role]);
+                }
+            }
+            foreach (['tablet', 'mobile'] as $viewport) {
+                foreach (['numbers', 'labels'] as $role) {
+                    if (($validated['appearance']['responsive'][$viewport][$role] ?? null) === []) {
+                        unset($validated['appearance']['responsive'][$viewport][$role]);
+                    }
+                }
+                if (($validated['appearance']['responsive'][$viewport] ?? null) === []) {
+                    unset($validated['appearance']['responsive'][$viewport]);
+                }
+            }
+            if (($validated['appearance']['responsive'] ?? null) === []) {
+                unset($validated['appearance']['responsive']);
+            }
+            if (($validated['appearance'] ?? null) === []) {
+                unset($validated['appearance']);
+            }
         }
         if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date], true)) {
             foreach ([['textShadow', 'textShadowColorId'], ['glow', 'glowColorId']] as [$effect, $color]) {
@@ -290,6 +344,65 @@ final class WebsiteElementValidator
             'element.appearance.responsive.mobile.fontSize' => ['sometimes', 'in:xs,s,m,l,xl,2xl,3xl,4xl,5xl,6xl,7xl'],
             'element.appearance.responsive.mobile.alignment' => ['sometimes', 'in:start,center,end'],
         ];
+    }
+
+    /** @param array<string,mixed> $element @return array<string,list<string>> */
+    private function countdownElementRules(array $element): array
+    {
+        $source = $element['target']['source'] ?? null;
+        if (! in_array($source, ['event', 'custom'], true)) {
+            throw ValidationException::withMessages(['element.target.source' => 'The Countdown target source is invalid.']);
+        }
+        if (isset($element['units']) && is_array($element['units']) && collect(['days', 'hours', 'minutes', 'seconds'])->every(fn (string $unit): bool => ($element['units'][$unit] ?? true) === false)) {
+            throw ValidationException::withMessages(['element.units' => 'At least one Countdown unit must be visible.']);
+        }
+        $rules = [
+            'element' => ['required', 'array:id,type,editorName,isHidden,target,units,labels,appearance'], 'element.id' => $this->idRules(), 'element.type' => ['required', 'in:countdown'],
+            'element.target' => ['required', 'array:source'.($source === 'custom' ? ',instant,timeZone' : '')], 'element.target.source' => ['required', 'in:'.$source],
+            'element.units' => ['sometimes', 'array:days,hours,minutes,seconds'], 'element.units.*' => ['sometimes', 'boolean'],
+            'element.labels' => ['sometimes', 'array:days,hours,minutes,seconds'], 'element.labels.*' => ['sometimes', 'string', 'max:40', 'not_regex:/[<>]/'],
+            'element.appearance' => ['sometimes', 'array:numbers,labels,direction,alignment,gap,responsive'],
+            'element.appearance.direction' => ['sometimes', 'in:horizontal,vertical'], 'element.appearance.alignment' => ['sometimes', 'in:start,center,end'], 'element.appearance.gap' => ['sometimes', 'in:xs,s,m,l,xl'],
+            'element.appearance.responsive' => ['sometimes', 'array:tablet,mobile'], 'element.appearance.responsive.*' => ['sometimes', 'array:numbers,labels,direction,alignment,gap'],
+            'element.appearance.responsive.*.direction' => ['sometimes', 'in:horizontal,vertical'], 'element.appearance.responsive.*.alignment' => ['sometimes', 'in:start,center,end'], 'element.appearance.responsive.*.gap' => ['sometimes', 'in:xs,s,m,l,xl'],
+        ];
+        if ($source === 'custom') {
+            $rules['element.target.instant'] = ['required', 'date_format:Y-m-d\TH:i:s\Z'];
+            $rules['element.target.timeZone'] = ['required', 'timezone:all'];
+        }
+        foreach (['numbers', 'labels'] as $role) {
+            $path = "element.appearance.{$role}";
+            $rules[$path] = ['sometimes', 'array:fontFamilyId,fontSize,fontWeight,lineHeight,letterSpacing,alignment,colorId,italic,underline,strikethrough,textTransform,textShadow,textShadowColorId,glow,glowColorId,responsive'];
+            $rules["{$path}.fontFamilyId"] = ['sometimes', 'string', 'min:1'];
+            $rules["{$path}.fontSize"] = ['sometimes', 'in:xs,s,m,l,xl,2xl,3xl,4xl,5xl,6xl,7xl'];
+            $rules["{$path}.fontWeight"] = ['sometimes', 'integer', 'in:400,600,700'];
+            $rules["{$path}.lineHeight"] = ['sometimes', 'in:tight,normal,relaxed'];
+            $rules["{$path}.letterSpacing"] = ['sometimes', 'in:tight,normal,wide'];
+            $rules["{$path}.alignment"] = ['sometimes', 'in:start,center,end'];
+            $rules["{$path}.colorId"] = ['sometimes', 'string', 'min:1'];
+            foreach (['italic', 'underline', 'strikethrough'] as $field) {
+                $rules["{$path}.{$field}"] = ['sometimes', 'boolean'];
+            }
+            $rules["{$path}.textTransform"] = ['sometimes', 'in:none,uppercase,lowercase,capitalize'];
+            foreach (['textShadow', 'glow'] as $field) {
+                $rules["{$path}.{$field}"] = ['sometimes', 'in:none,soft,medium,strong'];
+            }
+            foreach (['textShadowColorId', 'glowColorId'] as $field) {
+                $rules["{$path}.{$field}"] = ['sometimes', 'string', 'min:1'];
+            }
+            $rules["{$path}.responsive"] = ['sometimes', 'array:tablet,mobile'];
+            $rules["{$path}.responsive.*"] = ['sometimes', 'array:fontSize,alignment'];
+            $rules["{$path}.responsive.*.fontSize"] = ['sometimes', 'in:xs,s,m,l,xl,2xl,3xl,4xl,5xl,6xl,7xl'];
+            $rules["{$path}.responsive.*.alignment"] = ['sometimes', 'in:start,center,end'];
+            foreach (['tablet', 'mobile'] as $viewport) {
+                $responsivePath = "element.appearance.responsive.{$viewport}.{$role}";
+                $rules[$responsivePath] = ['sometimes', 'array:fontSize,alignment'];
+                $rules["{$responsivePath}.fontSize"] = ['sometimes', 'in:xs,s,m,l,xl,2xl,3xl,4xl,5xl,6xl,7xl'];
+                $rules["{$responsivePath}.alignment"] = ['sometimes', 'in:start,center,end'];
+            }
+        }
+
+        return $rules;
     }
 
     /** @return array<string, list<string>> */

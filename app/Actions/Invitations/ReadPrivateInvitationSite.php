@@ -64,6 +64,7 @@ final class ReadPrivateInvitationSite
                 'eventDate' => $event->event_date?->toDateString(),
                 'startTime' => $event->start_time === null ? null : substr($event->start_time, 0, 5),
                 'timeZone' => $event->time_zone,
+                'startsAtUtc' => $event->startsAtUtc()?->format('Y-m-d\TH:i:s\Z'),
             ],
             'website' => $renderable,
             'privateInvitation' => $privateInvitation,

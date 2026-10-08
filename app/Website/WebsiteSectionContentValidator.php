@@ -63,7 +63,7 @@ final class WebsiteSectionContentValidator
             foreach ($branches as $branch => $composition) {
                 $gallery = $sectionType === 'gallery';
                 $rsvp = $sectionType === 'rsvp';
-                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup']);
+                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'divider', 'media', 'compositionGroup']);
                 $flow = $this->childFlows->validate($composition['childFlow'], $allowedElementTypes ?? $defaults, $sectionType !== 'blank' && $sectionType !== 'hero');
                 if ($branch === 'shared') {
                     $validated['compositions']['shared']['childFlow'] = $flow;
@@ -101,7 +101,7 @@ final class WebsiteSectionContentValidator
             }
             $textElements = [];
             $collectText = function (array $element, string $path) use (&$collectText, &$textElements): void {
-                if (in_array(($element['type'] ?? null), ['text', 'date', 'divider'], true)) {
+                if (in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider'], true)) {
                     $textElements[] = [$element, $path];
                 }
                 if (($element['type'] ?? null) === 'compositionGroup') {
@@ -114,7 +114,7 @@ final class WebsiteSectionContentValidator
                 $collectText($element, "{$index}");
             }
             foreach ($textElements as [$element, $path]) {
-                if (! in_array(($element['type'] ?? null), ['text', 'date', 'divider'], true)) {
+                if (! in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider'], true)) {
                     continue;
                 }
                 if ($element['type'] === 'divider' && isset($element['appearance']['assetId']) && $templateKey !== null
@@ -137,6 +137,20 @@ final class WebsiteSectionContentValidator
                             $inlineColorId = $run['colorId'] ?? null;
                             if (is_string($inlineColorId) && $allowedColorIds !== null && ! in_array($inlineColorId, $allowedColorIds, true)) {
                                 throw ValidationException::withMessages(["content.childFlow.elements.{$path}.document.children.{$blockIndex}.children.{$runIndex}.colorId" => 'The selected inline Text color is not supported by this Website.']);
+                            }
+                        }
+                    }
+                }
+                if ($element['type'] === 'countdown') {
+                    foreach (['numbers', 'labels'] as $role) {
+                        $fontId = $element['appearance'][$role]['fontFamilyId'] ?? null;
+                        if (is_string($fontId) && $allowedFontIds !== null && ! in_array($fontId, $allowedFontIds, true)) {
+                            throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.{$role}.fontFamilyId" => 'The selected Countdown font is not supported by this Template.']);
+                        }
+                        foreach (['colorId', 'textShadowColorId', 'glowColorId'] as $field) {
+                            $colorId = $element['appearance'][$role][$field] ?? null;
+                            if (is_string($colorId) && $allowedColorIds !== null && ! in_array($colorId, $allowedColorIds, true)) {
+                                throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.{$role}.{$field}" => 'The selected Countdown color is not supported by this Website.']);
                             }
                         }
                     }

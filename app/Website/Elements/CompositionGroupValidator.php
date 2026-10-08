@@ -64,7 +64,7 @@ final class CompositionGroupValidator
             unset($validated['layout']['responsive']);
         }
         $validated['children'] = array_map(function (array $child) use ($validateChild): array {
-            if (! in_array(($child['type'] ?? null), ['text', 'date', 'accordion', 'schedule', 'people', 'divider', 'media', 'compositionGroup'], true)) {
+            if (! in_array(($child['type'] ?? null), ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'divider', 'media', 'compositionGroup'], true)) {
                 throw ValidationException::withMessages(['element.children' => 'Groups support Text, Date, Divider, Media, and one nested Group level.']);
             }
 

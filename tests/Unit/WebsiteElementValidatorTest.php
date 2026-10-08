@@ -216,7 +216,7 @@ class WebsiteElementValidatorTest extends TestCase
             'cta' => [['id' => 'cta-1', 'type' => 'cta', 'label' => 'Respond', 'action' => ['type' => 'rsvp']]],
             'event date' => [['id' => 'date-1', 'type' => 'eventDate']],
             'event time' => [['id' => 'time-1', 'type' => 'eventTime']],
-            'countdown' => [['id' => 'countdown-1', 'type' => 'countdown']],
+            'countdown' => [['id' => 'countdown-1', 'type' => 'countdown', 'editorName' => 'Countdown 1', 'target' => ['source' => 'event']]],
         ];
     }
 
@@ -378,6 +378,18 @@ class WebsiteElementValidatorTest extends TestCase
                 $this->assertInvalid(['id' => $type, 'type' => $type, $field => 'copied']);
             }
         }
+    }
+
+    public function test_countdown_requires_canonical_content_and_validates_custom_target(): void
+    {
+        $event = ['id' => 'countdown', 'type' => 'countdown', 'editorName' => 'Countdown 1', 'target' => ['source' => 'event']];
+        $this->assertSame($event, $this->validator->validate($event));
+        $this->assertInvalid(['id' => 'countdown', 'type' => 'countdown']);
+        $custom = [...$event, 'target' => ['source' => 'custom', 'instant' => '2027-01-01T04:00:00Z', 'timeZone' => 'Asia/Manila'], 'units' => ['seconds' => false], 'labels' => ['days' => 'Araw']];
+        $this->assertSame($custom, $this->validator->validate($custom));
+        $this->assertInvalid([...$custom, 'target' => ['source' => 'custom', 'instant' => '2027-01-01 04:00', 'timeZone' => 'Asia/Manila']]);
+        $this->assertInvalid([...$event, 'units' => ['days' => false, 'hours' => false, 'minutes' => false, 'seconds' => false]]);
+        $this->assertInvalid([...$event, 'labels' => ['days' => '<b>Days</b>']]);
     }
 
     public function test_people_block_preserves_order_and_validates_unique_stable_ids(): void
