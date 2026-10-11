@@ -252,6 +252,17 @@ final class UpdateWebsiteSectionAppearance
             $this->validateSectionDecorativeAppearance($sectionCapability, $section->type, $appearance['decorativeAppearance'], $section->website->design_settings);
             $expectedKeys[] = 'decorativeAppearance';
         }
+        if (array_key_exists('rootVerticalDistribution', $appearance)) {
+            if ($section->type !== 'hero' || ! is_string($appearance['rootVerticalDistribution'])
+                || ! in_array($appearance['rootVerticalDistribution'], ['packed', 'space-between'], true)) {
+                throw ValidationException::withMessages(['appearance.rootVerticalDistribution' => 'Hero root vertical distribution must be packed or space-between.']);
+            }
+            if ($appearance['rootVerticalDistribution'] === 'packed') {
+                unset($appearance['rootVerticalDistribution']);
+            } else {
+                $expectedKeys[] = 'rootVerticalDistribution';
+            }
+        }
         if (array_key_exists('height', $appearance)) {
             $height = $appearance['height'];
             if ($section->type !== 'hero' || ! is_array($height) || count($height) !== 2 || array_diff(array_keys($height), ['unit', 'value']) !== []
