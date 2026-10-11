@@ -22,6 +22,12 @@ class WebsiteSectionResource extends JsonResource
 
     public function toArray(Request $request): array
     {
+        return $this->presentation();
+    }
+
+    /** Request-independent presentation shared with snapshot projection. */
+    public function presentation(): array
+    {
         $definition = app(WebsiteSectionRegistry::class)->get($this->type);
         $template = $this->relationLoaded('website')
             ? app(WebsiteTemplateRegistry::class)->get($this->website->template_key)

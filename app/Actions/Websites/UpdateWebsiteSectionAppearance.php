@@ -11,6 +11,7 @@ use App\Website\Capabilities\SectionCapability;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\GalleryItemAnimation;
 use App\Website\ProjectColorLibrary;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteAnimation;
 use App\Website\WebsiteSectionAppearance;
 use Illuminate\Support\Facades\Validator;
@@ -23,8 +24,20 @@ final class UpdateWebsiteSectionAppearance
     public function __construct(private readonly WebsiteCapabilityResolver $capabilities) {}
 
     /** @param array<string, mixed> $appearance */
-    public function handle(WebsiteSection $section, array $appearance, bool $persist = true): WebsiteSection
+    public function handle(WebsiteSection $section, array $appearance, bool $persist = true, bool $validateMedia = true): WebsiteSection
     {
+        if (! $persist) {
+            return $this->apply($section, $appearance, $persist, $validateMedia);
+        }
+
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($section, fn (): WebsiteSection => $this->apply($section, $appearance, $persist, $validateMedia));
+    }
+
+    private function apply(WebsiteSection $section, array $appearance, bool $persist = true, bool $validateMedia = true): WebsiteSection
+    {
+        if ($persist && ! $validateMedia) {
+            throw new \LogicException('Skipping media existence checks is allowed only for non-persisting snapshot validation.');
+        }
         if (in_array($section->type, ['hero', 'gallery', 'blank'], true) && ! array_key_exists('shared', $appearance)) {
             throw ValidationException::withMessages(['appearance' => 'Composition Sections require the canonical shared/custom appearance envelope.']);
         }
@@ -54,7 +67,7 @@ final class UpdateWebsiteSectionAppearance
             }
             $assetIds = collect([$normalized['shared'], ...array_values($normalized['custom'] ?? [])])
                 ->flatMap(fn (array $branch): array => BackgroundMedia::assetIds($branch['backgroundMedia'] ?? null))->unique()->values();
-            if ($assetIds->isNotEmpty() && MediaAsset::query()->where('event_id', $section->website->event_id)->whereKey($assetIds)
+            if ($validateMedia && $assetIds->isNotEmpty() && MediaAsset::query()->where('event_id', $section->website->event_id)->whereKey($assetIds)
                 ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp'])->count() !== $assetIds->count()) {
                 throw ValidationException::withMessages(['appearance.backgroundMedia.assetId' => 'Select valid images from this Event Media Library.']);
             }
@@ -238,6 +251,17 @@ final class UpdateWebsiteSectionAppearance
             }
             $this->validateSectionDecorativeAppearance($sectionCapability, $section->type, $appearance['decorativeAppearance'], $section->website->design_settings);
             $expectedKeys[] = 'decorativeAppearance';
+        }
+        if (array_key_exists('rootVerticalDistribution', $appearance)) {
+            if ($section->type !== 'hero' || ! is_string($appearance['rootVerticalDistribution'])
+                || ! in_array($appearance['rootVerticalDistribution'], ['packed', 'space-between'], true)) {
+                throw ValidationException::withMessages(['appearance.rootVerticalDistribution' => 'Hero root vertical distribution must be packed or space-between.']);
+            }
+            if ($appearance['rootVerticalDistribution'] === 'packed') {
+                unset($appearance['rootVerticalDistribution']);
+            } else {
+                $expectedKeys[] = 'rootVerticalDistribution';
+            }
         }
         if (array_key_exists('height', $appearance)) {
             $height = $appearance['height'];

@@ -26,11 +26,16 @@ class Website extends Model
         'schema_version',
     ];
 
+    // Internal publication storage must never leak through generic model responses.
+    protected $hidden = ['published_snapshot', 'snapshot_published_at', 'draft_revision'];
+
     protected function casts(): array
     {
         return [
             'design_settings' => 'array',
             'schema_version' => 'integer',
+            'published_snapshot' => 'object',
+            'snapshot_published_at' => 'immutable_datetime',
         ];
     }
 

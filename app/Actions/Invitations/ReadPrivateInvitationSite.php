@@ -7,8 +7,7 @@ use App\Enums\InvitationTrustState;
 use App\Enums\PrivateInvitationLinkStatus;
 use App\Invitations\InvitationTrustContext;
 use App\Invitations\PrivateInvitationRsvpView;
-use App\Website\RenderableWebsite;
-use App\Website\WebsiteSectionMediaReferences;
+use App\Website\Publishing\PublishedWebsitePresentation;
 use Illuminate\Http\Request;
 
 final class ReadPrivateInvitationSite
@@ -19,7 +18,8 @@ final class ReadPrivateInvitationSite
         $context = app(ResolveInvitationTrustContext::class)->handle($token, $request);
         $invitation = $context->invitation;
         $event = $invitation->event;
-        $event->load('publishedWebsite.event', 'publishedWebsite.sections.website');
+        $projection = app(PublishedWebsitePresentation::class);
+        $snapshot = $projection->resolve($event, private: true);
 
         $privateInvitation = $context->toArray();
         $privateInvitation['rsvp'] = null;
@@ -34,7 +34,7 @@ final class ReadPrivateInvitationSite
             $this->addAccessTransferRuntime($privateInvitation, $context, $request);
         }
 
-        if ($event->publishedWebsite === null) {
+        if ($snapshot === null) {
             return [
                 'status' => 'unpublished',
                 'event' => ['name' => $event->name, 'slug' => $event->slug],
@@ -43,30 +43,10 @@ final class ReadPrivateInvitationSite
             ];
         }
 
-        $website = $event->publishedWebsite;
-        $renderable = (new RenderableWebsite($website))->toArray($request);
-        $renderable['sections'] = array_values(array_filter(
-            $renderable['sections'],
-            static fn (array $section): bool => $section['isEnabled'],
-        ));
-        $mediaIds = $website->sections->where('is_enabled', true)->flatMap(
-            fn ($section) => app(WebsiteSectionMediaReferences::class)->extract($section->type, $section->content, $section->appearance),
-        )->pluck('assetId')->unique();
-        $renderable['media'] = array_intersect_key((array) $renderable['media'], array_fill_keys($mediaIds->all(), true));
-
         return [
             'status' => 'published',
-            'event' => [
-                'id' => $event->id,
-                'name' => $event->name,
-                'slug' => $event->slug,
-                'type' => $event->type->value,
-                'eventDate' => $event->event_date?->toDateString(),
-                'startTime' => $event->start_time === null ? null : substr($event->start_time, 0, 5),
-                'timeZone' => $event->time_zone,
-                'startsAtUtc' => $event->startsAtUtc()?->format('Y-m-d\TH:i:s\Z'),
-            ],
-            'website' => $renderable,
+            'event' => $snapshot->event,
+            'website' => $projection->website($snapshot, $event, $token),
             'privateInvitation' => $privateInvitation,
         ];
     }

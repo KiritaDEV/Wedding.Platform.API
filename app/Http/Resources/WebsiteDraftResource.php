@@ -22,6 +22,7 @@ class WebsiteDraftResource extends JsonResource
         return [
             'schemaVersion' => $draft['schemaVersion'],
             'id' => $draft['id'],
+            'draftRevision' => $this->resource->draft_revision,
             'eventId' => $draft['eventId'],
             'name' => $draft['name'],
             'templateKey' => $draft['templateKey'],

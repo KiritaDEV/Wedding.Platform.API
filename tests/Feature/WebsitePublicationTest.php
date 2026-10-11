@@ -31,8 +31,14 @@ class WebsitePublicationTest extends TestCase
         $this->assertTrue($event->refresh()->publishedWebsite->is($first));
 
         $firstUpdatedAt = $first->updated_at;
+        $snapshotBefore = $first->fresh()->getRawOriginal('published_snapshot');
+        $publishedAt = $first->fresh()->snapshot_published_at;
+        $this->travel(1)->minutes();
         $this->actingAs($owner)->postJson("/api/events/{$event->id}/websites/{$first->id}/publish")->assertOk();
-        $this->assertTrue($first->refresh()->updated_at->equalTo($firstUpdatedAt));
+        $this->assertTrue($first->refresh()->updated_at->greaterThan($firstUpdatedAt));
+        $this->assertTrue($first->snapshot_published_at->greaterThan($publishedAt));
+        $this->assertSame($snapshotBefore, $first->getRawOriginal('published_snapshot'));
+        $this->travelBack();
 
         $this->actingAs($owner)->postJson("/api/events/{$event->id}/websites/{$second->id}/publish")->assertOk();
         $this->assertTrue($event->refresh()->publishedWebsite->is($second));

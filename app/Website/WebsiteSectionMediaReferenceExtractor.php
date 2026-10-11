@@ -2,9 +2,11 @@
 
 namespace App\Website;
 
+use Illuminate\Contracts\Container\Container;
+
 final class WebsiteSectionMediaReferenceExtractor
 {
-    public function __construct(private readonly WebsiteSectionCompositions $compositions) {}
+    public function __construct(private readonly WebsiteSectionCompositions $compositions, private readonly Container $container) {}
 
     /** @param array<string, mixed> $content */
     public function extract(string $sectionId, string $sectionType, array $content, array $appearance = []): array
@@ -14,15 +16,18 @@ final class WebsiteSectionMediaReferenceExtractor
             'gallery' => $this->gallery($content),
             default => [],
         };
+        foreach ($this->container->tagged(WebsiteMediaReferenceProvider::class) as $provider) {
+            array_push($references, ...$provider->section($sectionType, $content, $appearance));
+        }
         foreach ($this->compositions->persisted($content) as $branch) {
-            $this->appendElementMedia($references, $branch['composition']['childFlow']['elements'] ?? [], $branch['scope']);
+            $this->appendElementMedia($references, $branch['composition']['childFlow']['elements'] ?? [], $branch['scope'], $content['sharedContentDefinitions'] ?? []);
         }
 
         return $references;
     }
 
     /** @param array<int, mixed> $elements */
-    private function appendElementMedia(array &$references, mixed $elements, string $compositionScope): void
+    private function appendElementMedia(array &$references, mixed $elements, string $compositionScope, array $definitions = []): void
     {
         if (! is_array($elements)) {
             return;
@@ -30,6 +35,10 @@ final class WebsiteSectionMediaReferenceExtractor
         foreach ($elements as $element) {
             if (! is_array($element)) {
                 continue;
+            }
+            $element = app(SharedContent::class)->resolve($element, $definitions);
+            foreach ($this->container->tagged(WebsiteMediaReferenceProvider::class) as $provider) {
+                array_push($references, ...$provider->element($element, $compositionScope));
             }
             if (($element['type'] ?? null) === 'media') {
                 foreach (is_array($element['items'] ?? null) ? $element['items'] : [] as $item) {
@@ -56,7 +65,7 @@ final class WebsiteSectionMediaReferenceExtractor
                         'elementId' => is_string($element['id'] ?? null) ? $element['id'] : '',
                     ], fn (string $value): bool => $value !== '')];
                 }
-                $this->appendElementMedia($references, $element['children'] ?? [], $compositionScope);
+                $this->appendElementMedia($references, $element['children'] ?? [], $compositionScope, $definitions);
             }
         }
     }

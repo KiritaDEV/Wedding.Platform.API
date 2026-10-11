@@ -4,6 +4,7 @@ namespace App\Actions\Websites;
 
 use App\Models\Website;
 use App\Models\WebsiteSection;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteSectionAppearance;
 use App\Website\WebsiteSectionEditorNames;
 use App\Website\WebsiteSectionRegistry;
@@ -16,6 +17,11 @@ final class CreateWebsiteSection
     public function __construct(private readonly WebsiteSectionRegistry $sections, private readonly WebsiteTemplateRegistry $templates, private readonly WebsiteSectionEditorNames $names) {}
 
     public function handle(Website $website, string $type): WebsiteSection
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($website, fn (): WebsiteSection => $this->apply($website, $type));
+    }
+
+    private function apply(Website $website, string $type): WebsiteSection
     {
         return DB::transaction(function () use ($website, $type): WebsiteSection {
             $locked = Website::query()->lockForUpdate()->findOrFail($website->id);

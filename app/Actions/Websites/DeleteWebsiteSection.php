@@ -3,6 +3,7 @@
 namespace App\Actions\Websites;
 
 use App\Models\WebsiteSection;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteSectionRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +13,13 @@ final class DeleteWebsiteSection
     public function __construct(private readonly WebsiteSectionRegistry $sections, private readonly NormalizeWebsiteSectionOrder $normalizeOrder) {}
 
     public function handle(WebsiteSection $section): void
+    {
+        app(WebsitePublicationCoordinator::class)->forDraftMutation($section, function () use ($section): void {
+            $this->apply($section);
+        });
+    }
+
+    private function apply(WebsiteSection $section): void
     {
         $definition = $this->sections->get($section->type);
         if ($definition?->lifecycle->isUserOwned() !== true) {

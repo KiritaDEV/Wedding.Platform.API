@@ -72,27 +72,27 @@ class WebsiteProjectApiTest extends TestCase
         $hero = $project->sections()->where('type', 'hero')->sole();
 
         $design = ['colorTheme' => 'ink', 'fontSet' => 'fashion', 'artStyle' => 'frame', 'projectDefaults' => [], 'customColors' => []];
-        $this->actingAs($owner)->putJson("{$base}/design", ['designSettings' => $design])
+        $this->actingAs($owner)->draftPutJson("{$base}/design", ['designSettings' => $design])
             ->assertOk()->assertJsonPath('data.designSettings', $design);
 
         $content = $hero->content;
         $content['compositions']['shared']['childFlow']['elements'][0]['document']['children'][0]['children'][0]['text'] = 'Project-aware';
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}", ['content' => $content])
+        $this->actingAs($owner)->draftPutJson("{$base}/sections/{$hero->id}", ['content' => $content])
             ->assertOk();
         $this->assertSame($content, $hero->refresh()->content);
 
         $appearance = $hero->appearance;
         $appearance['shared']['height'] = ['unit' => 'svh', 'value' => 75];
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/appearance", ['appearance' => $appearance])
+        $this->actingAs($owner)->draftPutJson("{$base}/sections/{$hero->id}/appearance", ['appearance' => $appearance])
             ->assertOk();
         $this->assertSame($appearance, $hero->refresh()->appearance);
 
-        $this->actingAs($owner)->putJson("{$base}/sections/{$hero->id}/enabled", ['isEnabled' => false])
+        $this->actingAs($owner)->draftPutJson("{$base}/sections/{$hero->id}/enabled", ['isEnabled' => false])
             ->assertOk();
         $this->assertFalse($hero->refresh()->is_enabled);
 
         $reversed = $project->sections()->pluck('id')->reverse()->values()->all();
-        $this->actingAs($owner)->putJson("{$base}/sections/order", ['sectionIds' => $reversed])
+        $this->actingAs($owner)->draftPutJson("{$base}/sections/order", ['sectionIds' => $reversed])
             ->assertOk()->assertJsonPath('data.sections.0.id', $reversed[0]);
         $this->assertSame(range(10, $project->sections()->count() * 10, 10), $project->sections()->pluck('sort_order')->all());
     }
@@ -111,27 +111,27 @@ class WebsiteProjectApiTest extends TestCase
         $payload = ['content' => ['headline' => 'Blocked', 'subheadline' => '']];
         $projectBBase = "/api/events/{$event->id}/websites/{$projectB->id}";
 
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "{$projectBBase}/sections/{$sectionA->id}",
             $payload,
         )->assertNotFound();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "{$projectBBase}/sections/{$sectionA->id}/appearance",
             ['appearance' => WebsiteSectionAppearance::DEFAULT],
         )->assertNotFound();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "{$projectBBase}/sections/{$sectionA->id}/enabled",
             ['isEnabled' => false],
         )->assertNotFound();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "/api/events/{$event->id}/websites/{$projectA->id}/sections/{$foreignSection->id}",
             $payload,
         )->assertNotFound();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "/api/events/{$event->id}/websites/{$foreignProject->id}/design",
             ['designSettings' => $projectA->design_settings],
         )->assertNotFound();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "/api/events/{$event->id}/websites/{$foreignProject->id}/sections/order",
             ['sectionIds' => $foreignProject->sections()->pluck('id')->all()],
         )->assertNotFound();
@@ -148,7 +148,7 @@ class WebsiteProjectApiTest extends TestCase
 
         $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")
             ->assertOk()->assertJsonPath('data.id', $project->id)->assertJsonPath('data.name', 'Website');
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/enabled", [
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}/enabled", [
             'isEnabled' => false,
         ])->assertOk()->assertJsonPath('data.id', $project->id);
     }

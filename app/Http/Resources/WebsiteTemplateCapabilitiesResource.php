@@ -16,6 +16,12 @@ class WebsiteTemplateCapabilitiesResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        return $this->presentation();
+    }
+
+    /** Request-independent presentation shared with snapshot projection. */
+    public function presentation(): array
+    {
         return [
             'globalDesign' => [
                 'controls' => array_map(fn (GlobalDesignControlCapability $control): array => [
