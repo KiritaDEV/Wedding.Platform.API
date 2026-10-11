@@ -3,14 +3,19 @@
 namespace App\Actions\Websites;
 
 use App\Models\Event;
-use Illuminate\Support\Facades\DB;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 
 final class UnpublishWebsite
 {
+    public function __construct(private readonly WebsitePublicationCoordinator $coordinator) {}
+
     public function handle(Event $event): Event
     {
-        DB::transaction(function () use ($event): void {
-            Event::query()->whereKey($event->id)->lockForUpdate()->update(['published_website_id' => null]);
+        $this->coordinator->forEvent($event, function (Event $locked): void {
+            $locked->published_website_id = null;
+            if (! $locked->save()) {
+                throw new \RuntimeException('Unpublication pointer update was cancelled.');
+            }
         });
 
         return $event->refresh();

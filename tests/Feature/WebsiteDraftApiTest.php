@@ -78,7 +78,7 @@ class WebsiteDraftApiTest extends TestCase
         ]];
 
         $url = "/api/events/{$event->id}/website/sections/{$rsvp->id}";
-        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $this->assertSame($content, $rsvp->refresh()->content);
         $serialized = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('type', 'rsvp')['content'];
         $this->assertSame($content, $serialized);
@@ -114,7 +114,7 @@ class WebsiteDraftApiTest extends TestCase
                 ],
             ];
             $content = $this->blankContent($content['childFlow']);
-            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $content])->assertOk();
+            $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $content])->assertOk();
             $this->assertSame($content, $section->refresh()->content);
         }
 
@@ -140,7 +140,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = $this->blankContent($content['childFlow']);
 
         $url = "/api/events/{$event->id}/websites/{$event->website->id}/sections/{$section->id}";
-        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
         $draftSection = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('id', $section->id);
         $this->assertSame($content, $draftSection['content']);
@@ -152,12 +152,11 @@ class WebsiteDraftApiTest extends TestCase
         $section = $this->blankSection($event);
         $schedule = [
             'id' => 'schedule-1', 'type' => 'schedule', 'editorName' => 'Schedule 1',
-            'items' => [
-                ['id' => 'entry-1', 'time' => '15:30', 'title' => 'Ceremony', 'details' => 'Garden level'],
-                ['id' => 'entry-2', 'time' => '18:00', 'title' => 'Reception', 'details' => 'Main hall'],
-            ],
+            'days' => [['id' => 'day', 'date' => null, 'title' => null, 'visible' => true, 'activities' => [['id' => 'entry-1', 'startTime' => '15:30', 'endTime' => null, 'title' => 'Ceremony', 'description' => 'Garden level', 'location' => null, 'mapUrl' => null, 'imageMediaId' => null, 'visible' => true], ['id' => 'entry-2', 'startTime' => '18:00', 'endTime' => null, 'title' => 'Reception', 'description' => 'Main hall', 'location' => null, 'mapUrl' => null, 'imageMediaId' => null, 'visible' => true]]]],
         ];
-        $nested = [...$schedule, 'id' => 'schedule-2', 'editorName' => 'Schedule 2', 'items' => array_reverse($schedule['items'])];
+        $nested = [...$schedule, 'id' => 'schedule-2', 'editorName' => 'Schedule 2'];
+        $nested['days'][0]['id'] = 'nested-day';
+        $nested['days'][0]['activities'] = array_reverse($schedule['days'][0]['activities']);
         $content = ['childFlow' => [
             'elements' => [$schedule, ['id' => 'group-1', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => [
                 ['id' => 'group-2', 'type' => 'compositionGroup', 'editorName' => 'Group 2', 'children' => [$nested]],
@@ -167,7 +166,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = $this->blankContent($content['childFlow']);
 
         $url = "/api/events/{$event->id}/websites/{$event->website->id}/sections/{$section->id}";
-        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
         $draftSection = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('id', $section->id);
         $this->assertSame($content, $draftSection['content']);
@@ -198,7 +197,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = $this->blankContent($content['childFlow']);
 
         $url = "/api/events/{$event->id}/websites/{$event->website->id}/sections/{$section->id}";
-        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
     }
 
@@ -233,7 +232,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = $this->blankContent($content['childFlow']);
 
         $url = "/api/events/{$event->id}/website/sections/{$section->id}";
-        $this->actingAs($owner)->putJson($url, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
         $draftSection = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/websites/{$event->website->id}")->assertOk()->json('data.sections'))->firstWhere('id', $section->id);
         $this->assertSame($content, $draftSection['content']);
@@ -244,11 +243,11 @@ class WebsiteDraftApiTest extends TestCase
         [$event, $owner] = $this->createEvent();
         $hero = $event->website->sections()->where('type', 'hero')->sole();
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}", [
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}", [
             'content' => ['headline' => 'Hi', 'subheadline' => '', 'backgroundColor' => '#fff'],
         ])->assertUnprocessable()->assertJsonValidationErrors('content');
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}", [
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}", [
             'content' => ['headline' => 'Hi', 'subheadline' => '', 'eventDate' => '2027-01-01'],
         ])->assertUnprocessable()->assertJsonValidationErrors('content');
 
@@ -263,7 +262,7 @@ class WebsiteDraftApiTest extends TestCase
         $content = ['childFlow' => ['elements' => [$element], 'order' => [['kind' => 'element', 'id' => 'media']]]];
         $content = $this->blankContent($content['childFlow']);
 
-        $this->actingAs($owner)->call('PUT', $url, [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['content' => $content], JSON_THROW_ON_ERROR))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content])->assertOk();
         $response = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk();
         $raw = $response->getContent();
         $this->assertMatchesRegularExpression('/"presentation":\{\},"appearance":\{\}/', $raw);
@@ -271,7 +270,7 @@ class WebsiteDraftApiTest extends TestCase
         foreach (['presentation', 'appearance'] as $field) {
             $invalid = $content;
             $invalid['compositions']['shared']['childFlow']['elements'][0][$field] = [];
-            $this->actingAs($owner)->putJson($url, ['content' => $invalid])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['content' => $invalid])->assertUnprocessable();
         }
     }
 
@@ -298,18 +297,18 @@ class WebsiteDraftApiTest extends TestCase
         $content = ['childFlow' => ['elements' => [$media, $nested], 'order' => [['kind' => 'element', 'id' => 'direct-media'], ['kind' => 'element', 'id' => 'group']]]];
         $content = $this->blankContent($content['childFlow']);
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/websites/{$event->website->id}/sections/{$section->id}", ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/websites/{$event->website->id}/sections/{$section->id}", ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
         $draftSection = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('id', $section->id);
         $this->assertSame($content, $draftSection['content']);
         $this->assertArrayHasKey($asset->id, $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.media'));
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $draftSection['content']])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $draftSection['content']])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
 
         $foreignContent = $content;
         $foreignContent['compositions']['shared']['childFlow']['elements'][0]['items'][0]['mediaId'] = $foreign->id;
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $foreignContent])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$section->id}", ['content' => $foreignContent])->assertUnprocessable();
     }
 
     public function test_gallery_accepts_canonical_images_and_rejects_legacy_shape_and_unknown_sections(): void
@@ -320,15 +319,15 @@ class WebsiteDraftApiTest extends TestCase
         $asset->variants()->create(['variant_key' => 'web', 'mime_type' => 'image/webp', 'width' => 1200, 'height' => 800, 'size_bytes' => 80, 'storage_disk' => 'local', 'storage_path' => 'test/gallery.webp']);
         $content = ['semantic' => ['items' => [['id' => 'photo-one', 'type' => 'image', 'mediaId' => $asset->id, 'focalPoint' => ['x' => .25, 'y' => .75], 'zoom' => 1.5]]], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]];
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
         $this->assertSame($content, $gallery->refresh()->content);
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", [
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}", [
             'content' => ['semantic' => ['heading' => '', 'items' => [['url' => 'https://example.test/image.jpg']]]],
         ])->assertUnprocessable()->assertJsonValidationErrors('content.semantic');
 
         $legacy = WebsiteSection::factory()->for($event->website)->forType('customLegacySection')->create();
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$legacy->id}", [
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$legacy->id}", [
             'content' => [],
         ])->assertUnprocessable()->assertJsonValidationErrors('content');
     }
@@ -346,7 +345,7 @@ class WebsiteDraftApiTest extends TestCase
         $compositions = $gallery->content['compositions'];
         $saveReload = function (array $items) use ($event, $owner, $gallery, $compositions): array {
             $content = ['semantic' => ['items' => $items], 'compositions' => $compositions];
-            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
+            $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $content])->assertOk();
             $draft = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data');
             $reloaded = collect($draft['sections'])->firstWhere('id', $gallery->id)['content'];
             $this->assertSame($content, $reloaded);
@@ -391,7 +390,7 @@ class WebsiteDraftApiTest extends TestCase
         $gallery = $event->website->sections()->where('type', 'gallery')->sole();
         $galleryContent = ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]];
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $galleryContent])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $galleryContent])->assertOk();
         $this->assertSame($galleryContent, $gallery->refresh()->content);
 
         foreach ([
@@ -399,10 +398,10 @@ class WebsiteDraftApiTest extends TestCase
             ['semantic' => ['items' => [], 'mobile' => ['items' => []]], 'compositions' => $galleryContent['compositions']],
             ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content'], ['kind' => 'specialized', 'key' => 'content']]]]]],
         ] as $invalid) {
-            $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $invalid])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}", ['content' => $invalid])->assertUnprocessable();
         }
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$gallery->id}/enabled", ['isEnabled' => false])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$gallery->id}/enabled", ['isEnabled' => false])->assertOk();
         $this->assertSame($galleryContent, $gallery->refresh()->content);
     }
 
@@ -418,19 +417,19 @@ class WebsiteDraftApiTest extends TestCase
         $items = array_map(fn (int $index): array => ['id' => "item-{$index}", 'type' => 'image', 'mediaId' => $asset->id], range(1, 24));
         $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
 
-        $this->actingAs($owner)->putJson($url, ['content' => $make($items)])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make($items)])->assertOk();
         $tooMany = [...$items, [...$items[0], 'id' => 'item-25']];
-        $this->actingAs($owner)->putJson($url, ['content' => $make($tooMany)])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([$items[0], $items[0]])])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'alt' => 'Legacy']])])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'decorative' => true]])])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'caption' => 'Unsupported']])])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'mediaId' => $foreign->id]])])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make([[...$items[0], 'mediaId' => (string) Str::ulid()]])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make($tooMany)])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([$items[0], $items[0]])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([[...$items[0], 'alt' => 'Legacy']])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([[...$items[0], 'decorative' => true]])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([[...$items[0], 'caption' => 'Unsupported']])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([[...$items[0], 'mediaId' => $foreign->id]])])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make([[...$items[0], 'mediaId' => (string) Str::ulid()]])])->assertUnprocessable();
         $badFocalPoint = [[...$items[0], 'focalPoint' => ['x' => 1.1, 'y' => .5]]];
         $badZoom = [[...$items[0], 'zoom' => 3.1]];
-        $this->actingAs($owner)->putJson($url, ['content' => $make($badFocalPoint)])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $make($badZoom)])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make($badFocalPoint)])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $make($badZoom)])->assertUnprocessable();
     }
 
     public function test_enable_disable_preserves_content_and_checks_template_capability(): void
@@ -440,13 +439,13 @@ class WebsiteDraftApiTest extends TestCase
         $hero->update(['content' => ['headline' => 'Keep', 'subheadline' => 'Me']]);
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/enabled";
 
-        $this->actingAs($owner)->putJson($url, ['isEnabled' => false])
+        $this->actingAs($owner)->draftPutJson($url, ['isEnabled' => false])
             ->assertOk()->assertJsonPath('data.sections.0.isEnabled', false);
         $this->assertSame(['headline' => 'Keep', 'subheadline' => 'Me'], $hero->refresh()->content);
-        $this->actingAs($owner)->putJson($url, ['isEnabled' => true])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['isEnabled' => true])->assertOk();
 
         $legacy = WebsiteSection::factory()->for($event->website)->forType('customLegacySection')->disabled()->create();
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "/api/events/{$event->id}/website/sections/{$legacy->id}/enabled",
             ['isEnabled' => true],
         )->assertUnprocessable()->assertJsonValidationErrors('isEnabled');
@@ -460,20 +459,20 @@ class WebsiteDraftApiTest extends TestCase
         $reversed = $sections->pluck('id')->reverse()->values()->all();
         $url = "/api/events/{$event->id}/website/sections/order";
 
-        $this->actingAs($owner)->putJson($url, ['sectionIds' => $reversed])
+        $this->actingAs($owner)->draftPutJson($url, ['sectionIds' => $reversed])
             ->assertOk()->assertJsonPath('data.sections.0.id', $reversed[0]);
         $this->assertSame(range(10, count($sections) * 10, 10), $event->website->sections()->pluck('sort_order')->all());
 
-        $this->actingAs($owner)->putJson($url, ['sectionIds' => array_slice($reversed, 1)])
+        $this->actingAs($owner)->draftPutJson($url, ['sectionIds' => array_slice($reversed, 1)])
             ->assertUnprocessable()->assertJsonValidationErrors('sectionIds');
-        $this->actingAs($owner)->putJson($url, ['sectionIds' => [$reversed[0], $reversed[0]]])
+        $this->actingAs($owner)->draftPutJson($url, ['sectionIds' => [$reversed[0], $reversed[0]]])
             ->assertUnprocessable()->assertJsonValidationErrors('sectionIds.1');
 
         [$otherEvent] = $this->createEvent();
         $foreignId = $otherEvent->website->sections()->value('id');
         $extra = $reversed;
         $extra[0] = $foreignId;
-        $this->actingAs($owner)->putJson($url, ['sectionIds' => $extra])
+        $this->actingAs($owner)->draftPutJson($url, ['sectionIds' => $extra])
             ->assertUnprocessable()->assertJsonValidationErrors('sectionIds');
     }
 
@@ -484,7 +483,7 @@ class WebsiteDraftApiTest extends TestCase
         $foreignSection = $otherEvent->website->sections()->first();
         $content = $foreignSection->content;
 
-        $this->actingAs($owner)->putJson(
+        $this->actingAs($owner)->draftPutJson(
             "/api/events/{$event->id}/website/sections/{$foreignSection->id}",
             ['content' => ['headline' => 'Attack', 'subheadline' => '']],
         )->assertNotFound();
@@ -492,7 +491,7 @@ class WebsiteDraftApiTest extends TestCase
 
         $unrelated = User::factory()->create();
         $hero = $event->website->sections()->where('type', 'hero')->sole();
-        $this->actingAs($unrelated)->putJson(
+        $this->actingAs($unrelated)->draftPutJson(
             "/api/events/{$event->id}/website/sections/{$hero->id}/enabled",
             ['isEnabled' => false],
         )->assertForbidden();

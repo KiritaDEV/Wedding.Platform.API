@@ -45,7 +45,7 @@ class WebsiteSectionMediaTest extends TestCase
         $asset = $this->assetFor($event);
         $unused = $this->assetFor($event);
 
-        $response = $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", [
+        $response = $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", [
             'appearance' => $this->withHeroBackground($hero->appearance, ['assetId' => $asset->id, 'focalPoint' => ['x' => 0.25, 'y' => 0.75]]),
         ]);
 
@@ -66,11 +66,11 @@ class WebsiteSectionMediaTest extends TestCase
         $payload = fn (string $id): array => ['appearance' => $this->withHeroBackground($hero->appearance, ['assetId' => $id])];
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
 
-        $this->actingAs($admin)->putJson($url, $payload($asset->id))->assertOk();
-        $this->actingAs(User::factory()->superAdmin()->create())->putJson($url, $payload($asset->id))->assertOk();
-        $this->actingAs(User::factory()->create())->putJson($url, $payload($asset->id))->assertForbidden();
-        $this->actingAs($admin)->putJson($url, $payload($otherAsset->id))->assertUnprocessable();
-        $this->actingAs($admin)->putJson($url, $payload((string) Str::ulid()))->assertUnprocessable();
+        $this->actingAs($admin)->draftPutJson($url, $payload($asset->id))->assertOk();
+        $this->actingAs(User::factory()->superAdmin()->create())->draftPutJson($url, $payload($asset->id))->assertOk();
+        $this->actingAs(User::factory()->create())->draftPutJson($url, $payload($asset->id))->assertForbidden();
+        $this->actingAs($admin)->draftPutJson($url, $payload($otherAsset->id))->assertUnprocessable();
+        $this->actingAs($admin)->draftPutJson($url, $payload((string) Str::ulid()))->assertUnprocessable();
     }
 
     public function test_custom_hero_assets_round_trip_and_protect_device_only_media(): void
@@ -87,7 +87,7 @@ class WebsiteSectionMediaTest extends TestCase
         $appearance['custom']['tablet'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $tablet->id, 'zoom' => 1.7]];
         $appearance['custom']['mobile'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $mobile->id, 'focalPoint' => ['x' => .8, 'y' => .3], 'zoom' => 1.42]];
         $url = "/api/events/{$event->id}/websites/{$hero->website_id}/sections/{$hero->id}/presentation";
-        $response = $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk();
+        $response = $this->actingAs($owner)->draftPutJson($url, compact('content', 'appearance'))->assertOk();
 
         $saved = $hero->refresh()->appearance;
         $this->assertSame(1.7, $saved['custom']['tablet']['backgroundMedia']['zoom']);
@@ -96,15 +96,15 @@ class WebsiteSectionMediaTest extends TestCase
             $response->assertJsonPath("data.media.{$asset->id}.id", $asset->id);
         }
         $response->assertJsonCount(3, 'data.media');
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertConflict();
         $invalidNone = $saved;
         $invalidNone['custom']['mobile']['backgroundMedia'] = ['assetId' => null, 'zoom' => 1];
-        $this->actingAs($owner)->putJson($url, ['content' => $content, 'appearance' => $invalidNone])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content, 'appearance' => $invalidNone])->assertUnprocessable();
         $saved['custom']['mobile']['backgroundMedia'] = ['assetId' => null];
-        $this->actingAs($owner)->putJson($url, ['content' => $content, 'appearance' => $saved])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $content, 'appearance' => $saved])->assertOk();
         $this->assertNull($hero->refresh()->appearance['custom']['mobile']['backgroundMedia']['assetId']);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertNoContent();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$desktop->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$desktop->id}")->assertConflict();
     }
 
     public function test_section_media_zoom_is_optional_bounded_and_preserved_across_presentations(): void
@@ -117,17 +117,17 @@ class WebsiteSectionMediaTest extends TestCase
         $base = $this->withHeroBackground($hero->appearance, ['assetId' => $asset->id]);
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
         foreach ([1, 1.5, 3] as $zoom) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertOk();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertOk();
         }
         foreach ([0, -.1, .99, 3.1, 'close'] as $zoom) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => $zoom])])->assertUnprocessable();
         }
-        $this->actingAs($owner)->putJson($url, ['appearance' => $base])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => $base])->assertOk();
         $this->assertArrayNotHasKey('zoom', $hero->refresh()->appearance['shared']['backgroundMedia']);
 
         $zoomed = $this->withHeroBackground($base, [...$base['shared']['backgroundMedia'], 'zoom' => 1.8]);
-        $this->actingAs($owner)->putJson($url, ['appearance' => $zoomed])->assertOk();
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", [
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => $zoomed])->assertOk();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", [
             'appearance' => ['shared' => [...$zoomed['shared'], 'height' => ['unit' => 'svh', 'value' => 100]]],
         ])->assertOk();
         $this->assertSame(1.8, $hero->refresh()->appearance['shared']['backgroundMedia']['zoom']);
@@ -140,17 +140,17 @@ class WebsiteSectionMediaTest extends TestCase
         $asset = $this->assetFor($event);
         $appearance = $this->withHeroBackground($hero->appearance, ['assetId' => $asset->id]);
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
 
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")
             ->assertConflict()
             ->assertJsonPath('code', 'media_asset_in_use')
             ->assertJsonPath('message', 'This image is used by one or more Website Projects.')
             ->assertJsonPath('usage.references.0.reference.type', 'sectionMedia');
         $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
 
-        $this->actingAs($owner)->putJson($url, ['appearance' => $this->withHeroBackground($appearance, null)])->assertOk();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => $this->withHeroBackground($appearance, null)])->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
     public function test_gallery_references_block_asset_deletion_until_items_are_removed(): void
@@ -165,15 +165,15 @@ class WebsiteSectionMediaTest extends TestCase
         ]], 'compositions' => ['shared' => ['childFlow' => $flow]]];
         $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
 
-        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
         $draft = $this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk();
         $this->assertArrayHasKey($asset->id, $draft->json('data.media'));
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
 
         $content['semantic']['items'] = [];
-        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
         $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
     public function test_missing_gallery_asset_error_identifies_the_item_and_required_recovery(): void
@@ -189,13 +189,13 @@ class WebsiteSectionMediaTest extends TestCase
         ]], 'compositions' => ['shared' => ['childFlow' => $flow]]];
         $url = "/api/events/{$event->id}/website/sections/{$gallery->id}";
 
-        $response = $this->actingAs($owner)->putJson($url, compact('content'))
+        $response = $this->actingAs($owner)->draftPutJson($url, compact('content'))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['content.semantic.items.1.mediaId']);
         $this->assertSame('Gallery image 2 is unavailable. Replace or delete it before saving.', $response->json('errors')['content.semantic.items.1.mediaId'][0]);
 
         $content['semantic']['items'] = [$content['semantic']['items'][0]];
-        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
     }
 
     public function test_group_background_media_round_trips_blocks_deletion_and_rejects_unavailable_assets(): void
@@ -210,16 +210,16 @@ class WebsiteSectionMediaTest extends TestCase
         ];
         $content = $this->compositionContent(['elements' => [$group], 'order' => [['kind' => 'element', 'id' => 'group']]]);
         $url = "/api/events/{$event->id}/website/sections/{$blank->id}";
-        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
         $savedGroup = $blank->refresh()->content['compositions']['shared']['childFlow']['elements'][0];
         $this->assertSame($group, $savedGroup);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
 
         $invalid = $content;
         $invalid['compositions']['shared']['childFlow']['elements'][0]['backgroundMedia']['assetId'] = (string) Str::ulid();
-        $this->actingAs($owner)->putJson($url, ['content' => $invalid])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['content' => $this->compositionContent(['elements' => [[...$group, 'backgroundMedia' => null]], 'order' => [['kind' => 'element', 'id' => 'group']]])])->assertOk();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $invalid])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['content' => $this->compositionContent(['elements' => [[...$group, 'backgroundMedia' => null]], 'order' => [['kind' => 'element', 'id' => 'group']]])])->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
     public function test_group_responsive_explicit_none_round_trips_in_shared_custom_and_nested_compositions(): void
@@ -249,11 +249,11 @@ class WebsiteSectionMediaTest extends TestCase
         $appearance['custom']['mobile'] = $appearance['shared'];
         $url = "/api/events/{$event->id}/websites/{$website->id}/sections/{$blank->id}/presentation";
 
-        $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content', 'appearance'))->assertOk();
         $content['compositions']['custom']['mobile']['childFlow']['elements'][0]['backgroundMedia'] = ['assetId' => null];
         $content['compositions']['custom']['mobile']['childFlow']['elements'][0]['children'][0]['backgroundMedia'] = ['assetId' => null];
 
-        $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content', 'appearance'))->assertOk();
         $saved = $blank->refresh()->content;
         $this->assertSame($base->id, $saved['compositions']['shared']['childFlow']['elements'][0]['backgroundMedia']['assetId']);
         $this->assertNull($saved['compositions']['custom']['mobile']['childFlow']['elements'][0]['backgroundMedia']['assetId']);
@@ -262,8 +262,8 @@ class WebsiteSectionMediaTest extends TestCase
         $reloaded = collect($draft->json('data.sections'))->firstWhere('id', $blank->id);
         $this->assertNull($reloaded['content']['compositions']['custom']['mobile']['childFlow']['elements'][0]['backgroundMedia']['assetId']);
 
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertNoContent();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$base->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$mobile->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$base->id}")->assertConflict();
     }
 
     public function test_usage_is_project_aware_deduplicated_and_blocks_until_every_project_reference_is_removed(): void
@@ -283,14 +283,14 @@ class WebsiteSectionMediaTest extends TestCase
         $this->assertEqualsCanonicalizing([$firstProject->id, $secondProject->id], collect($usage['references'])->pluck('websiteProjectId')->all());
         $this->assertEqualsCanonicalizing([$firstProject->name, 'Modern Project'], collect($usage['references'])->pluck('websiteProjectName')->all());
 
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")
             ->assertConflict()->assertJsonCount(2, 'usage.references');
         $firstHero->update(['appearance' => $this->withHeroBackground($firstHero->appearance, null)]);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")
             ->assertConflict()->assertJsonCount(1, 'usage.references')
             ->assertJsonPath('usage.references.0.websiteProjectId', $secondProject->id);
         $secondHero->update(['appearance' => $this->withHeroBackground($secondHero->appearance, null)]);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
     public function test_custom_only_media_is_hydrated_protected_and_released_when_the_branch_is_removed(): void
@@ -315,14 +315,14 @@ class WebsiteSectionMediaTest extends TestCase
         $appearance = $blank->appearance;
         $appearance['custom']['mobile'] = $appearance['shared'];
 
-        $this->actingAs($owner)->putJson($presentationUrl, compact('content', 'appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($presentationUrl, compact('content', 'appearance'))->assertOk()
             ->assertJsonPath("data.media.{$asset->id}.id", $asset->id);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
 
         unset($content['compositions']['custom']);
         unset($appearance['custom']);
-        $this->actingAs($owner)->putJson($presentationUrl, compact('content', 'appearance'))->assertOk();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftPutJson($presentationUrl, compact('content', 'appearance'))->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertNoContent();
     }
 
     public function test_custom_hero_background_is_hydrated_protected_and_released_on_reset(): void
@@ -338,15 +338,15 @@ class WebsiteSectionMediaTest extends TestCase
         $appearance['custom']['desktop'] = [...$appearance['shared'], 'backgroundMedia' => ['assetId' => $desktopAsset->id]];
         $url = "/api/events/{$event->id}/websites/{$website->id}/sections/{$hero->id}/presentation";
 
-        $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, compact('content', 'appearance'))->assertOk()
             ->assertJsonPath("data.media.{$sharedAsset->id}.id", $sharedAsset->id)
             ->assertJsonPath("data.media.{$desktopAsset->id}.id", $desktopAsset->id);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$desktopAsset->id}")->assertConflict();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$desktopAsset->id}")->assertConflict();
 
         unset($content['compositions']['custom'], $appearance['custom']);
-        $this->actingAs($owner)->putJson($url, compact('content', 'appearance'))->assertOk();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$desktopAsset->id}")->assertNoContent();
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$sharedAsset->id}")->assertConflict();
+        $this->actingAs($owner)->draftPutJson($url, compact('content', 'appearance'))->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$desktopAsset->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$sharedAsset->id}")->assertConflict();
     }
 
     public function test_aggregate_references_hydrate_and_follow_branch_and_section_lifecycle(): void
@@ -386,7 +386,7 @@ class WebsiteSectionMediaTest extends TestCase
         $draft = $this->actingAs($owner)->getJson("/api/events/{$event->id}/websites/{$website->id}")->assertOk();
         foreach ($assets as $asset) {
             $draft->assertJsonPath("data.media.{$asset->id}.id", $asset->id);
-            $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
+            $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$asset->id}")->assertConflict();
         }
 
         $heroContent = $hero->refresh()->content;
@@ -394,17 +394,17 @@ class WebsiteSectionMediaTest extends TestCase
         $heroAppearance = $hero->appearance;
         unset($heroAppearance['custom']['mobile']);
         $hero->update(['content' => $heroContent, 'appearance' => $heroAppearance]);
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$assets['D']->id}")->assertNoContent();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$assets['D']->id}")->assertNoContent();
         foreach (['H', 'A', 'B', 'C', 'E', 'F'] as $key) {
-            $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertConflict();
+            $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertConflict();
         }
 
-        $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/websites/{$website->id}/sections/{$blank->id}")->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/websites/{$website->id}/sections/{$blank->id}")->assertOk();
         foreach (['E', 'F'] as $key) {
-            $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertNoContent();
+            $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertNoContent();
         }
         foreach (['H', 'A', 'B', 'C'] as $key) {
-            $this->actingAs($owner)->deleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertConflict();
+            $this->actingAs($owner)->draftDeleteJson("/api/events/{$event->id}/media/{$assets[$key]->id}")->assertConflict();
         }
     }
 

@@ -5,6 +5,7 @@ namespace App\Actions\Websites;
 use App\Models\Website;
 use App\Models\WebsiteSection;
 use App\Website\Elements\WebsiteElementIdentityRegenerator;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteSectionEditorNames;
 use App\Website\WebsiteSectionRegistry;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,11 @@ final class DuplicateWebsiteSection
     public function __construct(private readonly WebsiteSectionRegistry $sections, private readonly WebsiteSectionEditorNames $names, private readonly WebsiteElementIdentityRegenerator $identities, private readonly NormalizeWebsiteSectionOrder $normalizeOrder) {}
 
     public function handle(WebsiteSection $source): WebsiteSection
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($source, fn (): WebsiteSection => $this->apply($source));
+    }
+
+    private function apply(WebsiteSection $source): WebsiteSection
     {
         if ($this->sections->get($source->type)?->lifecycle->isUserOwned() !== true) {
             throw ValidationException::withMessages(['section' => 'This Section cannot be duplicated.']);

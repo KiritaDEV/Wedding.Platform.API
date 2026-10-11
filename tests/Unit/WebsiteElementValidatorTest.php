@@ -32,7 +32,7 @@ class WebsiteElementValidatorTest extends TestCase
             ['id' => 'rich', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]], 'isHidden' => true],
             ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1', 'isHidden' => true],
             ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => [], 'isHidden' => true],
-            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => [], 'isHidden' => true],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => [], 'isHidden' => true],
             ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => [], 'isHidden' => true],
             ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => [], 'isHidden' => true],
             ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1', 'isHidden' => true],
@@ -49,7 +49,7 @@ class WebsiteElementValidatorTest extends TestCase
             ['id' => 'text', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]]],
             ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1'],
             ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => []],
-            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => []],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => []],
             ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => []],
             ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => []],
             ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1'],
@@ -82,7 +82,7 @@ class WebsiteElementValidatorTest extends TestCase
             ['id' => 'text', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]]],
             ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1'],
             ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => []],
-            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => []],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => []],
             ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => []],
             ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => []],
             ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1'],
@@ -156,19 +156,18 @@ class WebsiteElementValidatorTest extends TestCase
 
     public function test_schedule_is_strict_bounded_and_uses_canonical_time_and_unique_item_ids(): void
     {
-        $element = ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => [
-            ['id' => 'item-1', 'time' => '15:30', 'title' => 'Ceremony', 'details' => "Garden\r\nlevel"],
-        ]];
+        $element = ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => [['id' => 'day', 'date' => null, 'title' => null, 'visible' => true, 'activities' => [['id' => 'item-1', 'startTime' => '15:30', 'endTime' => null, 'title' => 'Ceremony', 'description' => "Garden\r\nlevel", 'location' => null, 'mapUrl' => null, 'imageMediaId' => null, 'visible' => true]]]]];
         $expected = $element;
-        $expected['items'][0]['details'] = 'Garden level';
+        $expected['days'][0]['activities'][0]['description'] = "Garden\nlevel";
         $this->assertSame($expected, $this->validator->validate($element));
-        $this->assertSame([], $this->validator->validate([...$element, 'items' => []])['items']);
+        $this->assertSame([], $this->validator->validate([...$element, 'days' => []])['days']);
         foreach (['3:30 PM', '24:00', '15:60'] as $time) {
-            $this->assertInvalid([...$element, 'items' => [[...$element['items'][0], 'time' => $time]]]);
+            $invalid = $element;
+            $invalid['days'][0]['activities'][0]['startTime'] = $time;
+            $this->assertInvalid($invalid);
         }
         $this->assertInvalid([...$element, 'unexpected' => true]);
-        $this->assertInvalid([...$element, 'items' => [$element['items'][0], $element['items'][0]]]);
-        $this->assertInvalid([...$element, 'items' => array_fill(0, 101, $element['items'][0])]);
+        $this->assertInvalid([...$element, 'days' => [$element['days'][0], $element['days'][0]]]);
     }
 
     public function test_generic_editor_names_are_required_normalized_and_unicode_bounded(): void
@@ -178,7 +177,7 @@ class WebsiteElementValidatorTest extends TestCase
             ['id' => 'rich', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]]],
             ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1'],
             ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => []],
-            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => []],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => []],
             ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => []],
             ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => []],
             ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1'],
@@ -207,7 +206,7 @@ class WebsiteElementValidatorTest extends TestCase
             'text' => [['id' => 'text-1', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Body']]]]], 'appearance' => []]],
             'date' => [['id' => 'date-block-1', 'type' => 'date', 'editorName' => 'Date 1']],
             'accordion' => [['id' => 'accordion-1', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => [['id' => 'item-1', 'title' => 'Travel', 'content' => 'Allow extra time.']]]],
-            'schedule' => [['id' => 'schedule-1', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => [['id' => 'item-1', 'time' => '15:30', 'title' => 'Ceremony', 'details' => 'Garden level']]]],
+            'schedule' => [['id' => 'schedule-1', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'days' => [['id' => 'day', 'date' => null, 'title' => null, 'visible' => true, 'activities' => [['id' => 'item-1', 'startTime' => '15:30', 'endTime' => null, 'title' => 'Ceremony', 'description' => 'Garden level', 'location' => null, 'mapUrl' => null, 'imageMediaId' => null, 'visible' => true]]]]]],
             'people' => [['id' => 'people-1', 'type' => 'people', 'editorName' => 'People 1', 'groups' => [['id' => 'friends', 'name' => 'Friends', 'people' => [['id' => 'alex', 'name' => 'Alex']]]]]],
             'image' => [['id' => 'image-1', 'type' => 'image', 'mediaId' => $mediaId]],
             'media' => [['id' => 'media-1', 'type' => 'media', 'editorName' => 'Media 1', 'items' => [['id' => 'item-1', 'type' => 'image', 'mediaId' => $mediaId, 'alt' => 'Wedding portrait']]]],

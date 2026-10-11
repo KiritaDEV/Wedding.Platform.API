@@ -101,7 +101,7 @@ final class WebsiteSectionContentValidator
             }
             $textElements = [];
             $collectText = function (array $element, string $path) use (&$collectText, &$textElements): void {
-                if (in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider'], true)) {
+                if (in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule'], true)) {
                     $textElements[] = [$element, $path];
                 }
                 if (($element['type'] ?? null) === 'compositionGroup') {
@@ -114,7 +114,7 @@ final class WebsiteSectionContentValidator
                 $collectText($element, "{$index}");
             }
             foreach ($textElements as [$element, $path]) {
-                if (! in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider'], true)) {
+                if (! in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule'], true)) {
                     continue;
                 }
                 if ($element['type'] === 'divider' && isset($element['appearance']['assetId']) && $templateKey !== null
@@ -129,6 +129,30 @@ final class WebsiteSectionContentValidator
                     $colorId = $element['appearance'][$appearanceColorField] ?? null;
                     if (is_string($colorId) && $allowedColorIds !== null && ! in_array($colorId, $allowedColorIds, true)) {
                         throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.{$appearanceColorField}" => 'The selected Text color is not supported by this Website.']);
+                    }
+                }
+                if ($element['type'] === 'schedule') {
+                    foreach ($element['appearance']['typography'] ?? [] as $role => $values) {
+                        $fontId = $values['fontFamilyId'] ?? null;
+                        if ($fontId !== null && $allowedFontIds !== null && ! in_array($fontId, $allowedFontIds, true)) {
+                            throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.typography.{$role}.fontFamilyId" => 'The selected Schedule font is not supported by this Template.']);
+                        }
+                        $colorId = $values['colorId'] ?? null;
+                        if ($colorId !== null && $allowedColorIds !== null && ! in_array($colorId, $allowedColorIds, true)) {
+                            throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.typography.{$role}.colorId" => 'The selected Schedule text color is not supported by this Website.']);
+                        }
+                    }
+                    $scheduleColors = $allowedColorIds;
+                    if ($templateKey !== null) {
+                        $scheduleColors = [...($allowedColorIds ?? []), ...array_column(app(WebsiteTemplateRegistry::class)->get($templateKey)?->designLibrary->colors ?? [], 'id')];
+                    }
+                    foreach (['timeline' => ['markerColorId', 'lineColorId'], 'cards' => ['backgroundColorId', 'borderColorId']] as $group => $fields) {
+                        foreach ($fields as $field) {
+                            $id = $element['appearance'][$group][$field] ?? null;
+                            if ($id !== null && $scheduleColors !== null && ! in_array($id, $scheduleColors, true)) {
+                                throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.{$group}.{$field}" => 'The selected Schedule color is not in this Website color library.']);
+                            }
+                        }
                     }
                 }
                 if ($element['type'] === 'text') {
@@ -157,13 +181,23 @@ final class WebsiteSectionContentValidator
                 }
             }
         }
-        array_walk_recursive($validated, function (mixed &$value, string|int $key): void {
-            if ($value === null && $key !== 'media' && $key !== 'role' && $key !== 'assetId') {
-                $value = '';
+        $normalize = function (array &$values) use (&$normalize): void {
+            // Schedule owns its nullable contract; do not apply the legacy text empty-string rule.
+            if (($values['type'] ?? null) === 'schedule' || array_key_exists('days', $values)) {
+                return;
             }
-        });
+            foreach ($values as $key => &$value) {
+                if (is_array($value)) {
+                    $normalize($value);
+                } elseif ($value === null && ! in_array($key, ['media', 'role', 'assetId'], true)) {
+                    $value = '';
+                }
+            }
+            unset($value);
+        };
+        $normalize($validated);
 
-        return $validated;
+        return app(SharedContent::class)->validate($validated);
     }
 
     private function assertNoAuthoredResponsiveState(array $content): void
@@ -264,7 +298,8 @@ final class WebsiteSectionContentValidator
     private function compositionEnvelopeRules(): array
     {
         return [
-            'content' => ['required', 'array:semantic,compositions'],
+            'content' => ['required', 'array:semantic,compositions,sharedContentDefinitions'],
+            'content.sharedContentDefinitions' => ['sometimes', 'array', 'list'],
             'content.semantic' => ['present', 'array'],
             'content.compositions' => ['required', 'array:shared,custom'],
             'content.compositions.shared' => ['required', 'array:childFlow'],

@@ -182,7 +182,9 @@ class MediaAssetTest extends TestCase
         $directory = dirname(MediaAsset::findOrFail($assetId)->original_path);
         $this->actingAs($ownerA)->deleteJson("/api/events/{$eventA->id}/media/{$assetId}")->assertNoContent();
         $this->assertDatabaseMissing('media_assets', ['id' => $assetId]);
-        $this->assertFalse(Storage::disk('media-test')->directoryExists($directory));
+        // RefreshDatabase wraps this request in an uncommitted outer transaction.
+        // File cleanup must wait for that outermost commit (covered by MediaDeletionCommitTest).
+        $this->assertTrue(Storage::disk('media-test')->directoryExists($directory));
     }
 
     public function test_listing_filters_partial_trimmed_filename_and_rejects_invalid_values(): void

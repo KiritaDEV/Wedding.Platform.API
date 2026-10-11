@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Website\WebsiteSectionCompositions;
 use App\Website\WebsiteSectionMediaReferenceExtractor;
+use Illuminate\Container\Container;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -13,7 +14,7 @@ class WebsiteSectionMediaReferenceExtractorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->extractor = new WebsiteSectionMediaReferenceExtractor(new WebsiteSectionCompositions);
+        $this->extractor = new WebsiteSectionMediaReferenceExtractor(new WebsiteSectionCompositions, new Container);
     }
 
     #[DataProvider('sectionMediaCases')]

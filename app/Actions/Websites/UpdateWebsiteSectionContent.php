@@ -9,6 +9,7 @@ use App\Website\Capabilities\TypographyRole;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\Elements\DividerJsonShape;
 use App\Website\ProjectColorLibrary;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteSectionContentValidator;
 use App\Website\WebsiteSectionMediaReferences;
 use App\Website\WebsiteTemplateRegistry;
@@ -25,6 +26,11 @@ final class UpdateWebsiteSectionContent
 
     /** @param array<string, mixed> $content */
     public function handle(WebsiteSection $section, array $content, bool $enforceAppearancePairing = true): WebsiteSection
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($section, fn (): WebsiteSection => $this->apply($section, $content, $enforceAppearancePairing));
+    }
+
+    private function apply(WebsiteSection $section, array $content, bool $enforceAppearancePairing = true): WebsiteSection
     {
         $website = $section->website()->firstOrFail();
         $sectionCapability = $this->capabilities->section($website->template_key, $section->type);

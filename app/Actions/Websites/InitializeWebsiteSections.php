@@ -3,6 +3,7 @@
 namespace App\Actions\Websites;
 
 use App\Models\Website;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteSectionAppearance;
 use App\Website\WebsiteSectionRegistry;
 use App\Website\WebsiteTemplateRegistry;
@@ -17,6 +18,13 @@ final class InitializeWebsiteSections
     ) {}
 
     public function handle(Website $website, bool $enableMissingSections = true): void
+    {
+        app(WebsitePublicationCoordinator::class)->forDraftMutation($website, function () use ($website, $enableMissingSections): void {
+            $this->apply($website, $enableMissingSections);
+        });
+    }
+
+    private function apply(Website $website, bool $enableMissingSections = true): void
     {
         DB::transaction(function () use ($website, $enableMissingSections): void {
             $website->loadMissing('event');

@@ -6,6 +6,7 @@ use App\Models\Website;
 use App\Website\Capabilities\GlobalDesignControlId;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\ProjectColorLibrary;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateWebsiteDesignSettings
@@ -14,6 +15,11 @@ final class UpdateWebsiteDesignSettings
 
     /** @param array<string, mixed> $settings */
     public function handle(Website $website, array $settings): Website
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($website, fn (): Website => $this->apply($website, $settings));
+    }
+
+    private function apply(Website $website, array $settings): Website
     {
         if ($this->capabilities->globalDesign($website->template_key) === null) {
             throw ValidationException::withMessages(['designSettings' => 'The assigned Template is not supported.']);

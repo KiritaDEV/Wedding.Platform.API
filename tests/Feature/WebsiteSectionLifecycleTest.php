@@ -27,34 +27,34 @@ class WebsiteSectionLifecycleTest extends TestCase
         [$event, $owner] = $this->event();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
 
-        $firstResponse = $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated();
+        $firstResponse = $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated();
         $first = collect($firstResponse->json('data.sections'))->firstWhere('type', 'blank');
         $this->assertSame('Section', $first['displayName']);
         $this->assertSame('Section 1', $first['editorName']);
         $this->assertSame(['elements' => [], 'order' => []], $first['content']['compositions']['shared']['childFlow']);
 
-        $secondResponse = $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated();
+        $secondResponse = $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated();
         $blanks = collect($secondResponse->json('data.sections'))->where('type', 'blank')->values();
         $this->assertCount(2, $blanks);
         $this->assertSame(['Section 1', 'Section 2'], $blanks->pluck('editorName')->all());
         $secondId = $blanks[1]['id'];
 
-        $this->actingAs($owner)->putJson("{$base}/{$first['id']}/editor-name", ['editorName' => '  Travel   notes  '])
+        $this->actingAs($owner)->draftPutJson("{$base}/{$first['id']}/editor-name", ['editorName' => '  Travel   notes  '])
             ->assertOk()->assertJsonPath('data.sections.3.editorName', 'Travel notes');
-        $this->actingAs($owner)->putJson("{$base}/{$secondId}/editor-name", ['editorName' => 'Travel notes'])->assertOk();
+        $this->actingAs($owner)->draftPutJson("{$base}/{$secondId}/editor-name", ['editorName' => 'Travel notes'])->assertOk();
         $this->assertSame($first['id'], $event->website->sections()->findOrFail($first['id'])->id);
 
         $ids = $event->website->sections()->pluck('id')->all();
         $reversed = array_reverse($ids);
-        $this->actingAs($owner)->putJson("{$base}/order", ['sectionIds' => $reversed])->assertOk();
+        $this->actingAs($owner)->draftPutJson("{$base}/order", ['sectionIds' => $reversed])->assertOk();
         $this->assertSame($reversed, $event->website->sections()->pluck('id')->all());
-        $this->actingAs($owner)->putJson("{$base}/order", ['sectionIds' => array_slice($reversed, 1)])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson("{$base}/order", ['sectionIds' => array_slice($reversed, 1)])->assertUnprocessable();
 
-        $this->actingAs($owner)->putJson("{$base}/{$first['id']}/enabled", ['isEnabled' => false])->assertOk();
-        $this->actingAs($owner)->putJson("{$base}/{$first['id']}/enabled", ['isEnabled' => true])->assertOk();
+        $this->actingAs($owner)->draftPutJson("{$base}/{$first['id']}/enabled", ['isEnabled' => false])->assertOk();
+        $this->actingAs($owner)->draftPutJson("{$base}/{$first['id']}/enabled", ['isEnabled' => true])->assertOk();
         $this->assertSame($first['id'], $event->website->sections()->findOrFail($first['id'])->id);
 
-        $this->actingAs($owner)->deleteJson("{$base}/{$secondId}")->assertOk();
+        $this->actingAs($owner)->draftDeleteJson("{$base}/{$secondId}")->assertOk();
         $this->assertDatabaseMissing('website_sections', ['id' => $secondId]);
         $remaining = $event->website->sections()->count();
         $this->assertSame(range(10, $remaining * 10, 10), $event->website->sections()->pluck('sort_order')->all());
@@ -64,7 +64,7 @@ class WebsiteSectionLifecycleTest extends TestCase
     {
         [$event, $owner] = $this->event();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
-        $payload = $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated()->json('data.sections');
+        $payload = $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated()->json('data.sections');
         $sourcePayload = collect($payload)->firstWhere('type', 'blank');
         $source = $event->website->sections()->findOrFail($sourcePayload['id']);
         $mediaId = (string) Str::ulid();
@@ -83,7 +83,7 @@ class WebsiteSectionLifecycleTest extends TestCase
             'appearance' => [...$source->appearance, 'backgroundTreatment' => 'soft'],
         ]);
 
-        $response = $this->actingAs($owner)->postJson("{$base}/{$source->id}/duplicate")->assertCreated();
+        $response = $this->actingAs($owner)->draftPostJson("{$base}/{$source->id}/duplicate")->assertCreated();
         $duplicatePayload = collect($response->json('data.sections'))->where('type', 'blank')->last();
         $duplicate = $event->website->sections()->findOrFail($duplicatePayload['id']);
         $source = $source->refresh();
@@ -114,10 +114,10 @@ class WebsiteSectionLifecycleTest extends TestCase
         [$event, $owner] = $this->event();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
         $hero = $event->website->sections()->where('type', 'hero')->sole();
-        $this->actingAs($owner)->postJson("{$base}/{$hero->id}/duplicate")->assertUnprocessable();
-        $this->actingAs($owner)->deleteJson("{$base}/{$hero->id}")->assertUnprocessable();
-        $this->actingAs($owner)->putJson("{$base}/{$hero->id}/editor-name", ['editorName' => 'Other'])->assertUnprocessable();
-        $this->actingAs($owner)->postJson($base, ['type' => 'hero'])->assertUnprocessable();
+        $this->actingAs($owner)->draftPostJson("{$base}/{$hero->id}/duplicate")->assertUnprocessable();
+        $this->actingAs($owner)->draftDeleteJson("{$base}/{$hero->id}")->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson("{$base}/{$hero->id}/editor-name", ['editorName' => 'Other'])->assertUnprocessable();
+        $this->actingAs($owner)->draftPostJson($base, ['type' => 'hero'])->assertUnprocessable();
 
         $this->expectException(QueryException::class);
         $event->website->sections()->create([
@@ -143,7 +143,7 @@ class WebsiteSectionLifecycleTest extends TestCase
             $flow['order'] = array_values(array_filter($flow['order'], fn (array $reference): bool => $reference['id'] !== $deletedId));
 
             $content['compositions']['shared']['childFlow'] = $flow;
-            $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+            $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
             $this->assertNotContains($deletedId, array_column($hero->refresh()->content['compositions']['shared']['childFlow']['elements'], 'id'));
         }
 
@@ -159,7 +159,7 @@ class WebsiteSectionLifecycleTest extends TestCase
         $different = ['elements' => [$accordion], 'order' => [['kind' => 'element', 'id' => $accordion['id']]]];
         $content = $hero->refresh()->content;
         $content['compositions']['shared']['childFlow'] = $different;
-        $this->actingAs($owner)->putJson($url, compact('content'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('content'))->assertOk();
         $this->assertSame($different, $hero->refresh()->content['compositions']['shared']['childFlow']);
     }
 
@@ -167,8 +167,8 @@ class WebsiteSectionLifecycleTest extends TestCase
     {
         [$event, $owner] = $this->event();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
-        $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated();
-        $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated();
+        $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated();
+        $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated();
         $hero = $event->website->sections()->where('type', 'hero')->sole();
         $hero->delete();
 
@@ -186,10 +186,10 @@ class WebsiteSectionLifecycleTest extends TestCase
         [$event] = $this->event();
         $unrelated = User::factory()->create();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
-        $this->actingAs($unrelated)->postJson($base, ['type' => 'blank'])->assertForbidden();
+        $this->actingAs($unrelated)->draftPostJson($base, ['type' => 'blank'])->assertForbidden();
         [$otherEvent, $otherOwner] = $this->event();
-        $this->actingAs($otherOwner)->postJson($base, ['type' => 'blank'])->assertForbidden();
-        $this->actingAs($otherOwner)->postJson("/api/events/{$otherEvent->id}/websites/{$otherEvent->website->id}/sections", ['type' => 'blank', 'extra' => true])->assertUnprocessable();
+        $this->actingAs($otherOwner)->draftPostJson($base, ['type' => 'blank'])->assertForbidden();
+        $this->actingAs($otherOwner)->draftPostJson("/api/events/{$otherEvent->id}/websites/{$otherEvent->website->id}/sections", ['type' => 'blank', 'extra' => true])->assertUnprocessable();
     }
 
     /** @return array{Event, User} */

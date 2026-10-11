@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Invitations\CreateInvitation;
 use App\Actions\Invitations\UpdateInvitationRsvp;
+use App\Actions\Websites\CreateWebsiteProject;
 use App\Actions\Websites\PublishWebsite;
 use App\Enums\GuestStatus;
 use App\Enums\InvitationStatus;
@@ -13,7 +14,6 @@ use App\Models\Event;
 use App\Models\Invitation;
 use App\Models\InvitationPrivateLink;
 use App\Models\User;
-use App\Models\Website;
 use App\Website\WebsiteTemplateRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -150,10 +150,7 @@ class PrivateInvitationSiteTest extends TestCase
             ->assertJsonPath('data.privateInvitation.rsvp', null)->assertDontSee('Ana Secret');
 
         $first = $this->initializeWebsite($event);
-        $second = Website::factory()->for($event)->create([
-            'name' => 'Second',
-            'template_key' => WebsiteTemplateRegistry::MODERN_EDITORIAL_V1,
-        ]);
+        $second = app(CreateWebsiteProject::class)->handle($event, 'Second', WebsiteTemplateRegistry::MODERN_EDITORIAL_V1);
         app(PublishWebsite::class)->handle($event, $first);
         [$cookie, $secret] = $this->claim($invitation);
         $this->withUnencryptedCookie($cookie, $secret)

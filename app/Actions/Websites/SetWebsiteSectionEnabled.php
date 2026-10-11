@@ -5,6 +5,7 @@ namespace App\Actions\Websites;
 use App\Exceptions\IncompatibleWebsiteTemplate;
 use App\Exceptions\UnknownWebsiteTemplate;
 use App\Models\WebsiteSection;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteTemplateRegistry;
 
 final class SetWebsiteSectionEnabled
@@ -12,6 +13,11 @@ final class SetWebsiteSectionEnabled
     public function __construct(private readonly WebsiteTemplateRegistry $templates) {}
 
     public function handle(WebsiteSection $section, bool $isEnabled): WebsiteSection
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($section, fn (): WebsiteSection => $this->apply($section, $isEnabled));
+    }
+
+    private function apply(WebsiteSection $section, bool $isEnabled): WebsiteSection
     {
         if ($isEnabled) {
             $section->loadMissing('website.event');

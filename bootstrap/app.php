@@ -27,8 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // edge of a marked run are both meaningful. Laravel's default request
         // normalizers would otherwise change `{ text: "" }` to null and trim
         // `{ text: "word " }` to `{ text: "word" }` before validation.
-        $isWebsiteSectionUpdate = static fn (Request $request): bool => $request->method() === 'PUT'
-            && preg_match('#^api/events/[^/]+/(?:website|websites/[^/]+)/sections/[^/]+$#', $request->path()) === 1;
+        $isWebsiteSectionUpdate = static fn (Request $request): bool => ($request->method() === 'PUT' && preg_match('#^api/events/[^/]+/(?:website|websites/[^/]+)/sections/[^/]+(?:/presentation)?$#', $request->path()) === 1)
+            || ($request->method() === 'PATCH' && preg_match('#^api/events/[^/]+/websites/[^/]+/draft$#', $request->path()) === 1);
 
         $middleware->trimStrings(except: [$isWebsiteSectionUpdate]);
 

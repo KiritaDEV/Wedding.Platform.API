@@ -47,7 +47,7 @@ class WebsiteProjectColorTest extends TestCase
         [$owner, $event, $website] = $this->project();
         $url = $this->projectUrl($event->id, $website->id).'/colors';
 
-        $response = $this->actingAs($owner)->postJson($url, ['value' => '#1a1a1a'])
+        $response = $this->actingAs($owner)->draftPostJson($url, ['value' => '#1a1a1a'])
             ->assertCreated()
             ->assertJsonPath('data.designSettings.customColors.0.value', '#1A1A1A');
 
@@ -66,11 +66,11 @@ class WebsiteProjectColorTest extends TestCase
     {
         [$owner, $event, $website] = $this->project();
         $url = $this->projectUrl($event->id, $website->id).'/colors';
-        $this->actingAs($owner)->postJson($url, ['value' => '#1a1a1a'])->assertCreated();
-        $this->actingAs($owner)->postJson($url, ['value' => '#1A1A1A'])->assertUnprocessable();
+        $this->actingAs($owner)->draftPostJson($url, ['value' => '#1a1a1a'])->assertCreated();
+        $this->actingAs($owner)->draftPostJson($url, ['value' => '#1A1A1A'])->assertUnprocessable();
 
         foreach (['#FFF', '#11223344', 'rgb(1,2,3)', 'red', 'var(--accent)', 'linear-gradient(red, blue)', 'url(https://example.com/a.png)'] as $value) {
-            $this->actingAs($owner)->postJson($url, compact('value'))->assertUnprocessable();
+            $this->actingAs($owner)->draftPostJson($url, compact('value'))->assertUnprocessable();
         }
     }
 
@@ -79,9 +79,9 @@ class WebsiteProjectColorTest extends TestCase
         [$owner, $event, $website] = $this->project();
         $url = $this->projectUrl($event->id, $website->id).'/colors';
 
-        $this->actingAs($owner)->postJson($url, ['id' => 'project-color-'.Str::ulid(), 'value' => '#123456'])
+        $this->actingAs($owner)->draftPostJson($url, ['id' => 'project-color-'.Str::ulid(), 'value' => '#123456'])
             ->assertUnprocessable();
-        $this->actingAs($owner)->postJson($url, ['value' => '#123456', 'customColors' => []])
+        $this->actingAs($owner)->draftPostJson($url, ['value' => '#123456', 'customColors' => []])
             ->assertUnprocessable();
 
         $settings = $website->refresh()->design_settings;
@@ -89,7 +89,7 @@ class WebsiteProjectColorTest extends TestCase
             'id' => ProjectColorLibrary::ID_PREFIX.(string) Str::ulid(),
             'value' => '#123456',
         ]];
-        $this->actingAs($owner)->putJson($this->projectUrl($event->id, $website->id).'/design', ['designSettings' => $settings])
+        $this->actingAs($owner)->draftPutJson($this->projectUrl($event->id, $website->id).'/design', ['designSettings' => $settings])
             ->assertUnprocessable();
     }
 
@@ -107,7 +107,7 @@ class WebsiteProjectColorTest extends TestCase
         $settings['customColors'] = $colors;
         $website->update(['design_settings' => $settings]);
 
-        $this->actingAs($owner)->postJson($this->projectUrl($event->id, $website->id).'/colors', ['value' => '#FFFFFF'])
+        $this->actingAs($owner)->draftPostJson($this->projectUrl($event->id, $website->id).'/colors', ['value' => '#FFFFFF'])
             ->assertUnprocessable();
         $this->assertSame($colors, $website->refresh()->design_settings['customColors']);
     }

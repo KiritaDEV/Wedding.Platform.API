@@ -3,6 +3,7 @@
 namespace App\Actions\Websites;
 
 use App\Models\Website;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -10,6 +11,13 @@ final class ReorderWebsiteSections
 {
     /** @param list<string> $sectionIds */
     public function handle(Website $website, array $sectionIds): void
+    {
+        app(WebsitePublicationCoordinator::class)->forDraftMutation($website, function () use ($website, $sectionIds): void {
+            $this->apply($website, $sectionIds);
+        });
+    }
+
+    private function apply(Website $website, array $sectionIds): void
     {
         $currentIds = $website->sections()->pluck('id')->all();
 

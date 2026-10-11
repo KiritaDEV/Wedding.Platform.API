@@ -51,12 +51,12 @@ class DividerDraftApiTest extends TestCase
                 $element = ['id' => 'group-'.$index, 'type' => 'compositionGroup', 'editorName' => 'Group '.($index + 1), 'children' => [$element]];
             }
             $content = $this->content(['elements' => [$element], 'order' => [['kind' => 'element', 'id' => $element['id']]]]);
-            $firstResponse = $this->actingAs($owner)->putJson($url.'/sections/'.$section->id, ['content' => $content])->assertOk();
+            $firstResponse = $this->actingAs($owner)->draftPutJson($url.'/sections/'.$section->id, ['content' => $content])->assertOk();
             $first = $firstResponse->json('data');
             $returned = collect($first['sections'])->firstWhere('id', $section->id)['content'];
             $this->assertSame($content, $returned);
             $this->assertSame($content, $section->refresh()->content);
-            $secondResponse = $this->putJson($url.'/sections/'.$section->id, ['content' => $returned])->assertOk();
+            $secondResponse = $this->draftPutJson($url.'/sections/'.$section->id, ['content' => $returned])->assertOk();
             $second = $secondResponse->json('data');
             $this->assertSame($content, collect($second['sections'])->firstWhere('id', $section->id)['content']);
             $this->assertSame($content, $section->refresh()->content);
@@ -90,7 +90,7 @@ class DividerDraftApiTest extends TestCase
         };
         $content = $contentFor($divider);
         $url = "/api/events/{$event->id}/websites/{$website->id}";
-        $this->actingAs($owner)->putJson($url.'/sections/'.$section->id, ['content' => $content])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url.'/sections/'.$section->id, ['content' => $content])->assertOk();
         $this->assertSame($content, $section->refresh()->content);
         $savedSection = collect($this->getJson($url)->assertOk()->json('data.sections'))->firstWhere('id', $section->id);
         $this->assertSame($content, $savedSection['content']);
@@ -99,13 +99,13 @@ class DividerDraftApiTest extends TestCase
             if ($case['valid']) {
                 continue;
             }
-            $this->putJson($url.'/sections/'.$section->id, ['content' => $contentFor($case['element'])])->assertUnprocessable();
+            $this->draftPutJson($url.'/sections/'.$section->id, ['content' => $contentFor($case['element'])])->assertUnprocessable();
             $this->assertSame($content, $section->refresh()->content);
         }
         foreach (['botanical-vine', 'unknown-divider'] as $assetId) {
             $invalid = $divider;
             $invalid['appearance']['assetId'] = $assetId;
-            $this->putJson($url.'/sections/'.$section->id, ['content' => $contentFor($invalid)])->assertUnprocessable();
+            $this->draftPutJson($url.'/sections/'.$section->id, ['content' => $contentFor($invalid)])->assertUnprocessable();
             $this->assertSame($content, $section->refresh()->content);
         }
         foreach ($fixtures['jsonShapeCases'] as $case) {
@@ -113,7 +113,7 @@ class DividerDraftApiTest extends TestCase
             if ($case['valid']) {
                 $element['appearance'] = new \stdClass;
             }
-            $response = $this->putJson($url.'/sections/'.$section->id, ['content' => $contentFor($element)]);
+            $response = $this->draftPutJson($url.'/sections/'.$section->id, ['content' => $contentFor($element)]);
             if (! $case['valid']) {
                 $response->assertUnprocessable();
 
@@ -140,7 +140,7 @@ class DividerDraftApiTest extends TestCase
         $section = $this->blankSection($website);
         $before = $section->content;
         $content = $this->content(['elements' => [['id' => 'divider-1', 'type' => 'divider', 'editorName' => 'Divider 1', 'appearance' => ['assetId' => 'classic-divider-botanical-vine']]], 'order' => [['kind' => 'element', 'id' => 'divider-1']]]);
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/websites/{$website->id}/sections/{$section->id}", ['content' => $content])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/websites/{$website->id}/sections/{$section->id}", ['content' => $content])->assertUnprocessable();
         $this->assertSame($before, $section->refresh()->content);
     }
 
