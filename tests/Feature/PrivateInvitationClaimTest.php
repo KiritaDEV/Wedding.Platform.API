@@ -81,7 +81,7 @@ class PrivateInvitationClaimTest extends TestCase
         $this->assertSame(config('session.secure') ?? app()->isProduction(), $cookie->isSecure());
         $this->assertSame('lax', $cookie->getSameSite());
         $this->assertSame('/', $cookie->getPath());
-        $this->assertSame('', $cookie->getDomain());
+        $this->assertNull($cookie->getDomain());
         $this->assertFalse(DB::getSchemaBuilder()->hasColumn('invitation_browser_credentials', 'expires_at'));
 
         $this->postJson('/api/private-invitations/context', ['token' => $token])

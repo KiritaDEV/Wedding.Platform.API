@@ -18,10 +18,10 @@ final class InvitationTrustCookie
 
     public function make(InvitationBrowserCredential $credential, string $secret): Cookie
     {
-        return cookie(
+        return new Cookie(
             $this->name($credential),
             $secret,
-            self::MINUTES,
+            time() + (self::MINUTES * 60),
             '/',
             null,
             config('session.secure') ?? app()->isProduction(),
