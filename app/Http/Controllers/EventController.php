@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Events\CreateEvent;
+use App\Actions\Events\UpdateEventRsvpSettings;
 use App\Actions\Events\UpdateEventTiming;
 use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\UpdateEventRsvpSettingsRequest;
 use App\Http\Requests\UpdateEventTimingRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
@@ -51,6 +53,16 @@ class EventController extends Controller
         $model = Event::query()->findOrFail($event);
         Gate::authorize('update', $model);
         $updateTiming->handle($model, $request->timingAttributes());
+        $model->load(['memberships' => fn ($query) => $query->where('user_id', $request->user()->id)]);
+
+        return new EventResource($model);
+    }
+
+    public function updateRsvpSettings(UpdateEventRsvpSettingsRequest $request, UpdateEventRsvpSettings $update, string $event): EventResource
+    {
+        $model = Event::query()->findOrFail($event);
+        Gate::authorize('update', $model);
+        $model = $update->handle($model, $request->settings());
         $model->load(['memberships' => fn ($query) => $query->where('user_id', $request->user()->id)]);
 
         return new EventResource($model);

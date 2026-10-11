@@ -20,6 +20,7 @@ class EventFactory extends Factory
             'name' => Str::title($name),
             'slug' => Str::slug($name).'-'.fake()->unique()->numerify('#####'),
             'event_date' => fake()->optional()->dateTimeBetween('now', '+2 years'),
+            'time_zone' => 'UTC',
             'status' => EventStatus::Active,
         ];
     }

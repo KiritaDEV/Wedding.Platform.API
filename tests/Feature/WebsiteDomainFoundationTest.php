@@ -25,10 +25,9 @@ class WebsiteDomainFoundationTest extends TestCase
 
     public function test_w1_rollout_backfills_one_empty_website_for_a_pre_existing_event(): void
     {
+        $event = Event::factory()->create();
         Schema::dropIfExists('website_sections');
         Schema::dropIfExists('websites');
-
-        $event = Event::factory()->create();
 
         $websiteMigration = require database_path('migrations/2026_08_14_000000_create_websites_table.php');
         $websiteMigration->up();

@@ -22,17 +22,17 @@ class WebsiteSectionPresentationTest extends TestCase
         $content = $gallery->content;
         $semantic = $content['semantic'];
         $appearance = $gallery->appearance;
-        $appearance['shared'] = [...$appearance['shared'], 'columns' => 3, 'gap' => 'medium', 'aspectRatio' => 'portrait'];
-        foreach (['desktop' => [6, 'large', 'landscape'], 'tablet' => [2, 'small', 'square'], 'mobile' => [1, 'large', 'landscape']] as $device => [$columns, $gap, $aspectRatio]) {
+        $appearance['shared'] = [...$appearance['shared'], 'columns' => 3, 'gap' => 'medium', 'aspectRatio' => 'portrait', 'radius' => 'soft', 'shadow' => 'medium', 'galleryContentInnerSpacing' => ['top' => 's', 'right' => 'm', 'bottom' => 'l', 'left' => 'xl']];
+        foreach (['desktop' => [6, 'large', 'landscape', 'rounded', 'strong'], 'tablet' => [2, 'small', 'square', 'pill', 'soft'], 'mobile' => [1, 'large', 'landscape', 'square', 'none']] as $device => [$columns, $gap, $aspectRatio, $radius, $shadow]) {
             $content['compositions']['custom'][$device] = ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]];
-            $appearance['custom'][$device] = [...$gallery->appearance['shared'], 'columns' => $columns, 'gap' => $gap, 'aspectRatio' => $aspectRatio];
+            $appearance['custom'][$device] = [...$gallery->appearance['shared'], 'columns' => $columns, 'gap' => $gap, 'aspectRatio' => $aspectRatio, 'radius' => $radius, 'shadow' => $shadow, 'galleryContentInnerSpacing' => ['top' => 'xs', 'left' => 'l']];
         }
         $url = "/api/events/{$event->id}/websites/{$website->id}/sections/{$gallery->id}";
         $this->actingAs($owner)->putJson("{$url}/presentation", compact('content', 'appearance'))->assertOk();
         $this->assertSame($appearance, $gallery->refresh()->appearance);
         $this->assertSame($semantic, $gallery->content['semantic']);
 
-        foreach (['columns', 'gap', 'aspectRatio'] as $key) {
+        foreach (['columns', 'gap', 'aspectRatio', 'radius', 'shadow', 'galleryContentInnerSpacing'] as $key) {
             unset($appearance['custom']['tablet'][$key]);
             $this->actingAs($owner)->putJson("{$url}/appearance", compact('appearance'))->assertOk();
             $this->assertArrayNotHasKey($key, $gallery->refresh()->appearance['custom']['tablet']);

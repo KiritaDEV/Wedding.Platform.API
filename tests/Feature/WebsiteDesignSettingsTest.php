@@ -271,9 +271,9 @@ class WebsiteDesignSettingsTest extends TestCase
 
     public function test_w7_rollout_and_rollback_reapply_preserve_sections(): void
     {
+        $event = Event::factory()->create();
         Schema::dropIfExists('website_sections');
         Schema::dropIfExists('websites');
-        $event = Event::factory()->create();
         (require database_path('migrations/2026_08_14_000000_create_websites_table.php'))->up();
         (require database_path('migrations/2026_08_14_000001_create_website_sections_table.php'))->up();
         (require database_path('migrations/2026_08_14_000002_initialize_wedding_website_sections.php'))->up();

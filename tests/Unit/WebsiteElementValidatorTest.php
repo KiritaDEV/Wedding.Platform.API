@@ -43,6 +43,39 @@ class WebsiteElementValidatorTest extends TestCase
         }
     }
 
+    public function test_canonical_blocks_reuse_sparse_exact_device_animation_appearance(): void
+    {
+        $elements = [
+            ['id' => 'text', 'type' => 'text', 'editorName' => 'Text 1', 'document' => ['type' => 'doc', 'children' => [['type' => 'paragraph', 'children' => [['text' => 'Copy']]]]]],
+            ['id' => 'date', 'type' => 'date', 'editorName' => 'Date 1'],
+            ['id' => 'accordion', 'type' => 'accordion', 'editorName' => 'Accordion 1', 'items' => []],
+            ['id' => 'schedule', 'type' => 'schedule', 'editorName' => 'Schedule 1', 'items' => []],
+            ['id' => 'people', 'type' => 'people', 'editorName' => 'People 1', 'groups' => []],
+            ['id' => 'media', 'type' => 'media', 'editorName' => 'Media 1', 'items' => []],
+            ['id' => 'divider', 'type' => 'divider', 'editorName' => 'Divider 1'],
+            ['id' => 'group', 'type' => 'compositionGroup', 'editorName' => 'Group 1', 'children' => []],
+        ];
+        $appearance = [
+            'animation' => ['entrance' => ['type' => 'fade-up', 'speed' => 'normal', 'delay' => 'short']],
+            'responsive' => ['mobile' => ['animation' => ['entrance' => ['type' => 'none', 'delay' => 'long']]]],
+        ];
+        $expected = [
+            'animation' => $appearance['animation'],
+            'responsive' => ['mobile' => ['animation' => ['entrance' => ['type' => 'none']]]],
+        ];
+
+        foreach ($elements as $element) {
+            try {
+                $validated = $this->validator->validate([...$element, 'appearance' => $appearance]);
+            } catch (ValidationException $exception) {
+                $this->fail("{$element['type']} rejected canonical animation: ".json_encode($exception->errors()));
+            }
+            $this->assertSame($expected, $validated['appearance']);
+            $this->assertInvalid([...$element, 'appearance' => ['animation' => ['entrance' => ['type' => 'fade', 'duration' => 300]]]]);
+            $this->assertInvalid([...$element, 'appearance' => ['animation' => ['entrance' => ['type' => 'fade'], 'responsive' => []]]]);
+        }
+    }
+
     public function test_generic_blocks_accept_strict_responsive_outer_spacing_and_normalize_sparse_defaults(): void
     {
         $elements = [
@@ -183,7 +216,7 @@ class WebsiteElementValidatorTest extends TestCase
             'cta' => [['id' => 'cta-1', 'type' => 'cta', 'label' => 'Respond', 'action' => ['type' => 'rsvp']]],
             'event date' => [['id' => 'date-1', 'type' => 'eventDate']],
             'event time' => [['id' => 'time-1', 'type' => 'eventTime']],
-            'countdown' => [['id' => 'countdown-1', 'type' => 'countdown']],
+            'countdown' => [['id' => 'countdown-1', 'type' => 'countdown', 'editorName' => 'Countdown 1', 'target' => ['source' => 'event']]],
         ];
     }
 
@@ -345,6 +378,18 @@ class WebsiteElementValidatorTest extends TestCase
                 $this->assertInvalid(['id' => $type, 'type' => $type, $field => 'copied']);
             }
         }
+    }
+
+    public function test_countdown_requires_canonical_content_and_validates_custom_target(): void
+    {
+        $event = ['id' => 'countdown', 'type' => 'countdown', 'editorName' => 'Countdown 1', 'target' => ['source' => 'event']];
+        $this->assertSame($event, $this->validator->validate($event));
+        $this->assertInvalid(['id' => 'countdown', 'type' => 'countdown']);
+        $custom = [...$event, 'target' => ['source' => 'custom', 'instant' => '2027-01-01T04:00:00Z', 'timeZone' => 'Asia/Manila'], 'units' => ['seconds' => false], 'labels' => ['days' => 'Araw']];
+        $this->assertSame($custom, $this->validator->validate($custom));
+        $this->assertInvalid([...$custom, 'target' => ['source' => 'custom', 'instant' => '2027-01-01 04:00', 'timeZone' => 'Asia/Manila']]);
+        $this->assertInvalid([...$event, 'units' => ['days' => false, 'hours' => false, 'minutes' => false, 'seconds' => false]]);
+        $this->assertInvalid([...$event, 'labels' => ['days' => '<b>Days</b>']]);
     }
 
     public function test_people_block_preserves_order_and_validates_unique_stable_ids(): void

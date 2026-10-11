@@ -1,5 +1,6 @@
 <?php
 
+use App\Website\WebsiteSectionRegistry;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ return new class extends Migration
         $definitions = [
             'hero' => [10, ['semantic' => [], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => []]]]]],
             'gallery' => [70, ['semantic' => ['items' => []], 'compositions' => ['shared' => ['childFlow' => ['elements' => [], 'order' => [['kind' => 'specialized', 'key' => 'content']]]]]]],
-            'rsvp' => [90, ['semantic' => ['heading' => '', 'description' => '', 'buttonLabel' => '']]],
+            'rsvp' => [90, app(WebsiteSectionRegistry::class)->get('rsvp')->defaultContent],
         ];
 
         DB::table('websites')

@@ -121,7 +121,7 @@ class WebsiteTemplateRegistryTest extends TestCase
         $this->assertSame(['colorTheme' => 'ink', 'fontSet' => 'editorial', 'artStyle' => 'clean'], $template->defaultDesignSettings);
 
         foreach ($template->supportedSectionTypes as $sectionType) {
-            $this->assertSame(WebsiteSectionAppearance::OPTIONS, $template->appearanceOptionsFor($sectionType));
+            $this->assertSame($sectionType === 'rsvp' ? [] : WebsiteSectionAppearance::OPTIONS, $template->appearanceOptionsFor($sectionType));
         }
     }
 
@@ -154,7 +154,7 @@ class WebsiteTemplateRegistryTest extends TestCase
         $template = (new WebsiteTemplateRegistry)->get(WebsiteTemplateRegistry::CLASSIC_FILIPINIANA_V1);
 
         foreach ($template->supportedSectionTypes as $sectionType) {
-            $this->assertSame(WebsiteSectionAppearance::OPTIONS, $template->appearanceOptionsFor($sectionType));
+            $this->assertSame($sectionType === 'rsvp' ? [] : WebsiteSectionAppearance::OPTIONS, $template->appearanceOptionsFor($sectionType));
         }
         $this->assertNull($template->appearanceOptionsFor('customLegacySection'));
     }

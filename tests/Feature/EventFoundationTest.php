@@ -26,6 +26,7 @@ class EventFoundationTest extends TestCase
         $event = app(CreateEvent::class)->handle($creator, [
             'name' => 'Neil & Hazel',
             'event_date' => '2027-06-12',
+            'time_zone' => 'Asia/Manila',
         ]);
 
         $membership = $event->memberships()->sole();
@@ -87,8 +88,8 @@ class EventFoundationTest extends TestCase
         $creator = User::factory()->create();
         $action = app(CreateEvent::class);
 
-        $first = $action->handle($creator, ['name' => 'Neil & Hazel']);
-        $second = $action->handle($creator, ['name' => 'Neil & Hazel']);
+        $first = $action->handle($creator, ['name' => 'Neil & Hazel', 'time_zone' => 'UTC']);
+        $second = $action->handle($creator, ['name' => 'Neil & Hazel', 'time_zone' => 'UTC']);
 
         $this->assertSame('neil-hazel', $first->slug);
         $this->assertSame('neil-hazel-2', $second->slug);
@@ -102,10 +103,12 @@ class EventFoundationTest extends TestCase
         $first = $action->handle($creator, [
             'name' => 'First Event',
             'slug' => 'Our Celebration!',
+            'time_zone' => 'UTC',
         ]);
         $second = $action->handle($creator, [
             'name' => 'Second Event',
             'slug' => 'Our Celebration!',
+            'time_zone' => 'UTC',
         ]);
 
         $this->assertSame('our-celebration', $first->slug);

@@ -24,6 +24,7 @@ class WebsiteProjectResource extends JsonResource
                 ...$settings,
                 'projectDefaults' => (object) $settings['projectDefaults'],
             ],
+            'isPublished' => $this->event?->published_website_id === $this->id,
         ];
     }
 }
