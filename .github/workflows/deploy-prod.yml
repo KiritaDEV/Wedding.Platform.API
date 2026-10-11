@@ -1,0 +1,53 @@
+﻿name: Deploy PROD API
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: kirita-prod-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+
+    steps:
+      - name: Deploy PROD API
+        shell: powershell
+        run: |
+          $git = "C:\Program Files\Git\cmd\git.exe"
+          $php = "C:\xampp\php\php.exe"
+          $composer = "C:\ProgramData\ComposerSetup\bin\composer.bat"
+          $repo = "C:\Kirita\prod\api"
+
+          if (-not (Test-Path "$repo\.env")) {
+            Write-Error "Missing $repo\.env"
+            exit 1
+          }
+
+          & $git -C $repo fetch origin master
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $git -C $repo reset --hard origin/master
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Push-Location $repo
+
+          & $composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $php artisan migrate --force
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $php artisan optimize:clear
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Pop-Location
+
+
