@@ -1,0 +1,1287 @@
+{
+  "schemaCases": [
+    {
+      "name": "minimal",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1"
+      },
+      "valid": true
+    },
+    {
+      "name": "complete",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": true,
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "full",
+          "alignment": "end",
+          "colorId": "terracotta-text",
+          "opacity": 63
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "width small",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "small"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "width medium",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "medium"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "width large",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "large"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "width full",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "full"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid width 0",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width 37",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": 37
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width 100",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": 100
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width \"37\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "37"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width 37.5",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": 37.5
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width true",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width null",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width {}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": {}
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width []",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid width \"wide\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "width": "wide"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "visibility True",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": true
+      },
+      "valid": true
+    },
+    {
+      "name": "visibility False",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": false
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid visibility 0",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": 0
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility 1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility \"0\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": "0"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility \"1\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": "1"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility \"true\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": "true"
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility null",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": null
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility []",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": []
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid visibility {}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "isHidden": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "opacity 25",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 25
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "opacity 63",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 63
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "opacity 100",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 100
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "invalid opacity \"63\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": "63"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity true",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity null",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity 24",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 24
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity 101",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 101
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity 63.5",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": 63.5
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity []",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid opacity {}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "opacity": {}
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "obsolete styleId \"botanical-vine\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "styleId": "botanical-vine"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "obsolete styleId 42",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "styleId": 42
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "obsolete styleId null",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "styleId": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"assetId\": \"classic-divider-botanical-vine\", \"styleId\": \"botanical-vine\"}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "styleId": "botanical-vine"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"responsive\": {\"mobile\": {\"width\": \"small\"}}}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "responsive": {
+            "mobile": {
+              "width": "small"
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"thickness\": 1}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "thickness": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"marginTop\": 4}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "marginTop": 4
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"color\": \"#fff\"}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "color": "#fff"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"debug\": true}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "debug": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"assetId\": \"\"}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"colorId\": \"\"}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "colorId": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "invalid appearance {\"alignment\": \"fill\"}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "alignment": "fill"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown root",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "debug": true
+      },
+      "valid": false
+    }
+  ],
+  "templateCases": [
+    {
+      "name": "classic-filipiniana-v1 None",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "classic-filipiniana-v1 classic-divider-botanical-vine",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "classic-filipiniana-v1 classic-divider-filigree-center",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "classic-filipiniana-v1 classic-divider-floral-silhouette",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "classic-filipiniana-v1 classic-divider-ornamental-flourish",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "classic-filipiniana-v1 botanical-vine",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "botanical-vine"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "classic-filipiniana-v1 filigree-center",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "filigree-center"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "classic-filipiniana-v1 floral-silhouette",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "floral-silhouette"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "classic-filipiniana-v1 ornamental-flourish",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "ornamental-flourish"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "classic-filipiniana-v1 unknown-divider",
+      "templateKey": "classic-filipiniana-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "unknown-divider"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 None",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "modern-editorial-v1 classic-divider-botanical-vine",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 classic-divider-filigree-center",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 classic-divider-floral-silhouette",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 classic-divider-ornamental-flourish",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 botanical-vine",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "botanical-vine"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 filigree-center",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "filigree-center"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 floral-silhouette",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "floral-silhouette"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 ornamental-flourish",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "ornamental-flourish"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "modern-editorial-v1 unknown-divider",
+      "templateKey": "modern-editorial-v1",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {
+          "assetId": "unknown-divider"
+        }
+      },
+      "valid": false
+    }
+  ],
+  "jsonShapeCases": [
+    {
+      "name": "appearance {}",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "appearance []",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": []
+      },
+      "valid": false
+    },
+    {
+      "name": "appearance null",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": null
+      },
+      "valid": false
+    },
+    {
+      "name": "appearance \"\"",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": ""
+      },
+      "valid": false
+    },
+    {
+      "name": "appearance true",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": true
+      },
+      "valid": false
+    },
+    {
+      "name": "appearance 37",
+      "element": {
+        "id": "divider-1",
+        "type": "divider",
+        "editorName": "Divider 1",
+        "appearance": 37
+      },
+      "valid": false
+    }
+  ],
+  "roundTripCases": [
+    {
+      "name": "small start terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "small",
+          "alignment": "start",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        }
+      }
+    },
+    {
+      "name": "small start project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "small",
+          "alignment": "start",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "small center terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "small",
+          "alignment": "center",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "small center project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "small",
+          "alignment": "center",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        }
+      }
+    },
+    {
+      "name": "small end terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "small",
+          "alignment": "end",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "small end project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "small",
+          "alignment": "end",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "medium start terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "medium",
+          "alignment": "start",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        }
+      }
+    },
+    {
+      "name": "medium start project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "medium",
+          "alignment": "start",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "medium center terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "medium",
+          "alignment": "center",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "medium center project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "medium",
+          "alignment": "center",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        }
+      }
+    },
+    {
+      "name": "medium end terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "medium",
+          "alignment": "end",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "medium end project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "medium",
+          "alignment": "end",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "large start terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "large",
+          "alignment": "start",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        }
+      }
+    },
+    {
+      "name": "large start project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "large",
+          "alignment": "start",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "large center terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "large",
+          "alignment": "center",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "large center project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "large",
+          "alignment": "center",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        }
+      }
+    },
+    {
+      "name": "large end terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "large",
+          "alignment": "end",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "large end project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "large",
+          "alignment": "end",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "full start terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "full",
+          "alignment": "start",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        }
+      }
+    },
+    {
+      "name": "full start project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "full",
+          "alignment": "start",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "full center terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-botanical-vine",
+          "width": "full",
+          "alignment": "center",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": false
+      }
+    },
+    {
+      "name": "full center project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-filigree-center",
+          "width": "full",
+          "alignment": "center",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        }
+      }
+    },
+    {
+      "name": "full end terracotta-text",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-floral-silhouette",
+          "width": "full",
+          "alignment": "end",
+          "colorId": "terracotta-text",
+          "opacity": 25
+        },
+        "isHidden": true
+      }
+    },
+    {
+      "name": "full end project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+      "element": {
+        "id": "divider-complete",
+        "type": "divider",
+        "editorName": "Divider 7",
+        "appearance": {
+          "assetId": "classic-divider-ornamental-flourish",
+          "width": "full",
+          "alignment": "end",
+          "colorId": "project-color-01KED9H9XR7WQBP4JTKP1YYQ3F",
+          "opacity": 100
+        },
+        "isHidden": false
+      }
+    }
+  ]
+}

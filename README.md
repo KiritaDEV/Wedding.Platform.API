@@ -7,6 +7,18 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Media storage
+
+Event media is stored through the Laravel filesystem disk selected by `MEDIA_DISK` (`local` by default). Domain and API consumers use stable asset IDs and variant keys; disk names and paths remain private storage implementation details. This boundary allows a later move to S3-compatible storage without changing Website section content.
+
+Image processing requires PHP GD with JPEG, PNG, and WebP support. Production object-storage adapters and credentials are intentionally not included in W15.
+
+Generated image variants preserve aspect ratio without upscaling: `thumbnail` is limited to an 800px longest edge and `web` to 1920px. Existing development assets retain their originally generated variants; delete and re-upload an old asset to receive the current thumbnail size.
+
+Exact duplicate protection uses `MediaAsset.content_hash`, a SHA-256 hash of the original uploaded bytes. Uniqueness is scoped per Event and detects byte-identical files only, not visually similar or recompressed images.
+
+Media listing search matches filenames and server-side type, orientation, and UTC uploaded-date filters compose with AND semantics before pagination. Orientation is derived from stored dimensions; tags, AI search, and perceptual search are not included.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
