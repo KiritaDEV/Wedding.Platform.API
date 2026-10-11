@@ -3,6 +3,7 @@
 namespace App\Website\Elements;
 
 use App\Website\Capabilities\PlatformFontRegistry;
+use App\Website\ScheduleContent;
 use App\Website\WebsiteAnimation;
 use Closure;
 use Illuminate\Support\Facades\Validator;
@@ -24,6 +25,40 @@ final class WebsiteElementValidator
     public function validate(array $element): array
     {
         return $this->validateAtDepth($element, 0);
+    }
+
+    /** Validate a compatible typography subset using the existing Text rules and font registry. */
+    public function validateScheduleTypography(array $appearance): void
+    {
+        $fields = ['fontFamilyId', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'alignment', 'colorId', 'italic', 'underline', 'strikethrough', 'responsive'];
+        $rules = [];
+        foreach ($this->textElementRules() as $path => $rule) {
+            if (str_starts_with($path, 'element.appearance.')) {
+                $field = explode('.', substr($path, strlen('element.appearance.')))[0];
+                if (in_array($field, $fields, true)) {
+                    $rules[$path] = $rule;
+                }
+            }
+        }
+        $rules['element.appearance'] = ['present', 'array:'.implode(',', $fields)];
+        Validator::make(['element' => ['appearance' => $appearance]], $rules)->validate();
+        // Laravel's boolean/integer rules accept strings; authored JSON typography does not.
+        foreach ($appearance as $field => $value) {
+            $valid = match ($field) {
+                'fontWeight' => (is_int($value) || is_float($value)) && in_array($value, [400, 600, 700]),
+                'italic', 'underline', 'strikethrough' => is_bool($value),
+                'responsive' => is_array($value),
+                default => is_string($value) && $value !== '',
+            };
+            if (! $valid) {
+                throw ValidationException::withMessages(["element.appearance.{$field}" => 'Use the supported JSON typography value.']);
+            }
+        }
+        $tuple = $appearance;
+        if (isset($tuple['fontWeight'])) {
+            $tuple['fontWeight'] = (int) $tuple['fontWeight'];
+        }
+        $this->assertTextFontTuple(['appearance' => $tuple]);
     }
 
     /** @param array<string,mixed> $element @return array<string,mixed> */
@@ -89,12 +124,19 @@ final class WebsiteElementValidator
             ? WebsiteAnimation::extract($element)
             : [];
 
+        $scheduleAppearance = $type === WebsiteElementType::Schedule ? ScheduleAppearance::extract($element) : null;
+
         $rules = match ($type) {
             WebsiteElementType::Heading => $this->textRules('heading', 255),
             WebsiteElementType::Text => $this->textElementRules(),
             WebsiteElementType::Date => $this->dateElementRules(),
             WebsiteElementType::Accordion => $this->accordionElementRules(),
-            WebsiteElementType::Schedule => $this->scheduleElementRules(),
+            WebsiteElementType::Schedule => array_key_exists('contentId', $element) ? [
+                'element' => ['required', 'array:id,type,editorName,isHidden,contentId'],
+                'element.id' => $this->idRules(),
+                'element.type' => ['required', 'in:schedule'],
+                'element.contentId' => ['required', 'string', 'max:255', 'regex:/^\S+$/u'],
+            ] : $this->scheduleElementRules(),
             WebsiteElementType::People => $this->peopleElementRules(),
             WebsiteElementType::Image => $this->imageRules(),
             WebsiteElementType::Media => $this->mediaRules(),
@@ -114,6 +156,9 @@ final class WebsiteElementValidator
 
         $validated = Validator::make(['element' => $element], $rules)->validate()['element'];
         $validated['id'] = trim($validated['id']);
+        if ($scheduleAppearance !== null) {
+            $validated['appearance'] = $scheduleAppearance;
+        }
         if ($spacing !== []) {
             $validated['appearance'] = FourSidedSpacing::restoreOuter($validated['appearance'] ?? [], $spacing);
         }
@@ -240,17 +285,8 @@ final class WebsiteElementValidator
                 return $item;
             }, $validated['items']);
         }
-        if ($type === WebsiteElementType::Schedule) {
-            $ids = array_column($validated['items'], 'id');
-            if (count($ids) !== count(array_unique($ids))) {
-                throw ValidationException::withMessages(['element.items' => 'Schedule item IDs must be unique.']);
-            }
-            $validated['items'] = array_map(function (array $item): array {
-                $item['id'] = trim($item['id']);
-                $item['details'] = $this->normalizeText($item['details']);
-
-                return $item;
-            }, $validated['items']);
+        if ($type === WebsiteElementType::Schedule && ! isset($validated['contentId'])) {
+            $validated['days'] = app(ScheduleContent::class)->validate(['days' => $validated['days']])['days'];
         }
         if ($type === WebsiteElementType::People) {
             $groupIds = array_column($validated['groups'], 'id');
@@ -424,19 +460,13 @@ final class WebsiteElementValidator
     private function scheduleElementRules(): array
     {
         return [
-            'element' => ['required', 'array:id,type,editorName,isHidden,items'],
+            'element' => ['required', 'array:id,type,editorName,isHidden,days'],
             'element.id' => $this->idRules(),
             'element.type' => ['required', 'in:schedule'],
-            'element.items' => ['present', 'array', 'max:100'],
-            'element.items.*' => ['required', 'array:id,time,title,details'],
-            'element.items.*.id' => $this->idRules(),
-            'element.items.*.time' => ['present', 'string', 'regex:/^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/'],
-            'element.items.*.title' => ['present', 'string', 'max:255'],
-            'element.items.*.details' => ['present', 'string', 'max:5000'],
+            'element.days' => ['present', 'array', 'list', 'max:20'],
         ];
     }
 
-    /** @return array<string, list<string>> */
     private function peopleElementRules(): array
     {
         return [

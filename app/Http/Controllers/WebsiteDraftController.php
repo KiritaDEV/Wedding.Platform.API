@@ -11,6 +11,7 @@ use App\Actions\Websites\InitializeEventWebsite;
 use App\Actions\Websites\PublishWebsite;
 use App\Actions\Websites\RenameWebsiteSection;
 use App\Actions\Websites\ReorderWebsiteSections;
+use App\Actions\Websites\SaveWebsiteDraft;
 use App\Actions\Websites\SetWebsiteSectionEnabled;
 use App\Actions\Websites\UnpublishWebsite;
 use App\Actions\Websites\UpdateWebsiteDesignSettings;
@@ -26,6 +27,7 @@ use App\Http\Requests\CreateWebsiteSectionRequest;
 use App\Http\Requests\InitializeWebsiteRequest;
 use App\Http\Requests\RenameWebsiteSectionRequest;
 use App\Http\Requests\ReorderWebsiteSectionsRequest;
+use App\Http\Requests\SaveWebsiteDraftRequest;
 use App\Http\Requests\UpdateWebsiteDesignSettingsRequest;
 use App\Http\Requests\UpdateWebsiteSectionAppearanceRequest;
 use App\Http\Requests\UpdateWebsiteSectionContentRequest;
@@ -37,16 +39,23 @@ use App\Http\Resources\WebsiteProjectResource;
 use App\Models\Event;
 use App\Models\Website;
 use App\Models\WebsiteSection;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use App\Website\WebsiteCreationTemplateCatalog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class WebsiteDraftController extends Controller
 {
+    public function saveProjectDraft(SaveWebsiteDraftRequest $request, SaveWebsiteDraft $save, string $event, string $website): WebsiteDraftResource
+    {
+        $project = $this->website($this->authorizedEvent($event), $website);
+
+        return $this->draft($save->handle($project, $request->validated()));
+    }
+
     public function show(string $event): WebsiteDraftResource
     {
         return $this->draft($this->legacyWebsite($this->authorizedEvent($event)));
@@ -260,7 +269,7 @@ class WebsiteDraftController extends Controller
         $eventModel = $this->authorizedEvent($event);
         $project = $this->website($eventModel, $website);
         $sectionModel = $this->section($project, $section);
-        DB::transaction(function () use ($request, $updateContent, $updateAppearance, $sectionModel): void {
+        app(WebsitePublicationCoordinator::class)->forDraftMutation($project, function () use ($request, $updateContent, $updateAppearance, $sectionModel): void {
             $updateContent->handle($sectionModel, $request->validated('content'), false);
             $sectionModel->refresh();
             $updateAppearance->handle($sectionModel, $request->validated('appearance'));
@@ -480,6 +489,12 @@ class WebsiteDraftController extends Controller
 
     private function draft(Website $website): WebsiteDraftResource
     {
-        return new WebsiteDraftResource($website->refresh()->load('sections.website'));
+        return app(WebsitePublicationCoordinator::class)->forProject($website, function (Event $event, Website $locked): WebsiteDraftResource {
+            foreach ($locked->sections as $section) {
+                $section->setRelation('website', $locked);
+            }
+
+            return new WebsiteDraftResource($locked);
+        });
     }
 }

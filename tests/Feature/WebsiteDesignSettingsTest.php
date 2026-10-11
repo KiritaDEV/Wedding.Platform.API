@@ -71,7 +71,7 @@ class WebsiteDesignSettingsTest extends TestCase
         $before = $event->website->sections()->get()->map->only(['id', 'content', 'sort_order', 'is_enabled'])->all();
         $settings = ['colorTheme' => 'sage', 'fontSet' => 'romantic', 'artStyle' => 'botanical', 'projectDefaults' => [], 'customColors' => []];
 
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/design", ['designSettings' => $settings])
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/design", ['designSettings' => $settings])
             ->assertOk()->assertJsonPath('data.designSettings', $settings);
 
         $this->assertSame($settings, $event->website->refresh()->design_settings);
@@ -116,12 +116,12 @@ class WebsiteDesignSettingsTest extends TestCase
 
             foreach ($resolver->globalDesign($templateKey)->controls as $control) {
                 $settings[$control->id->value] = $control->options[1]['key'];
-                $this->actingAs($owner)->putJson($url, ['designSettings' => $settings])
+                $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $settings])
                     ->assertOk()
                     ->assertJsonPath("data.designSettings.{$control->id->value}", $settings[$control->id->value]);
 
                 $invalid = [...$settings, $control->id->value => 'unsupported-value'];
-                $this->actingAs($owner)->putJson($url, ['designSettings' => $invalid])
+                $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $invalid])
                     ->assertUnprocessable()
                     ->assertJsonValidationErrors("designSettings.{$control->id->value}");
                 $this->assertSame($settings, $website->refresh()->design_settings);
@@ -173,7 +173,7 @@ class WebsiteDesignSettingsTest extends TestCase
             ],
         ];
 
-        $this->actingAs($owner)->putJson($url, ['designSettings' => $settings])->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $settings])->assertOk()
             ->assertJsonPath('data.projectDesignDefaults.headingFontId', 'romantic-serif')
             ->assertJsonPath('data.projectDesignDefaults.bodyFontId', 'classic-serif')
             ->assertJsonPath('data.projectDesignDefaults.headingColorId', 'terracotta-accent')
@@ -182,18 +182,18 @@ class WebsiteDesignSettingsTest extends TestCase
 
         $settings['colorTheme'] = 'olive';
         $settings['fontSet'] = 'modern';
-        $this->actingAs($owner)->putJson($url, ['designSettings' => $settings])->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $settings])->assertOk()
             ->assertJsonPath('data.designSettings.projectDefaults', $settings['projectDefaults'])
             ->assertJsonPath('data.projectDesignDefaults.headingFontId', 'romantic-serif')
             ->assertJsonPath('data.projectDesignDefaults.accentColorId', 'terracotta-accent');
 
         unset($settings['projectDefaults']['headingFontId'], $settings['projectDefaults']['accentColorId']);
-        $this->actingAs($owner)->putJson($url, ['designSettings' => $settings])->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $settings])->assertOk()
             ->assertJsonPath('data.projectDesignDefaults.headingFontId', 'modern-sans')
             ->assertJsonPath('data.projectDesignDefaults.accentColorId', 'olive-accent');
 
         $settings['projectDefaults'] = [];
-        $this->actingAs($owner)->putJson($url, ['designSettings' => $settings])->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, ['designSettings' => $settings])->assertOk()
             ->assertJsonPath('data.projectDesignDefaults', [
                 'headingFontId' => 'modern-sans',
                 'bodyFontId' => 'modern-sans',
@@ -222,11 +222,11 @@ class WebsiteDesignSettingsTest extends TestCase
         ];
 
         foreach ($invalid as $projectDefaults) {
-            $this->actingAs($owner)->putJson($url, ['designSettings' => [...$base, 'projectDefaults' => $projectDefaults]])
+            $this->actingAs($owner)->draftPutJson($url, ['designSettings' => [...$base, 'projectDefaults' => $projectDefaults]])
                 ->assertUnprocessable();
         }
         foreach (['not-an-object', ['terracotta-text']] as $projectDefaults) {
-            $this->actingAs($owner)->putJson($url, ['designSettings' => [...$base, 'projectDefaults' => $projectDefaults]])
+            $this->actingAs($owner)->draftPutJson($url, ['designSettings' => [...$base, 'projectDefaults' => $projectDefaults]])
                 ->assertUnprocessable();
         }
         $this->assertEquals($base, $event->website->refresh()->design_settings);
@@ -264,9 +264,9 @@ class WebsiteDesignSettingsTest extends TestCase
         $payload = ['designSettings' => $this->defaults()];
         $url = "/api/events/{$event->id}/website/design";
 
-        $this->putJson($url, $payload)->assertUnauthorized();
-        $this->actingAs($unrelated)->putJson($url, $payload)->assertForbidden();
-        $this->actingAs($owner)->putJson($url, $payload)->assertOk();
+        $this->draftPutJson($url, $payload)->assertUnauthorized();
+        $this->actingAs($unrelated)->draftPutJson($url, $payload)->assertForbidden();
+        $this->actingAs($owner)->draftPutJson($url, $payload)->assertOk();
     }
 
     public function test_w7_rollout_and_rollback_reapply_preserve_sections(): void

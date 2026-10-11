@@ -19,6 +19,29 @@ final class WebsiteElementIdentityRegenerator
         if (! isset($content['compositions']['shared'])) {
             return $content;
         }
+        $contentIds = [];
+        foreach ($content['sharedContentDefinitions'] ?? [] as $index => $definition) {
+            $newId = (string) Str::ulid();
+            $contentIds[$definition['id']] = $newId;
+            $definition['id'] = $newId;
+            $definition['content']['days'] = $this->scheduleDays($definition['content']['days']);
+            $content['sharedContentDefinitions'][$index] = $definition;
+        }
+        $remap = function (array &$elements) use (&$remap, $contentIds): void {
+            foreach ($elements as &$element) {
+                if (isset($element['contentId'])) {
+                    $element['contentId'] = $contentIds[$element['contentId']];
+                }
+                if (isset($element['children'])) {
+                    $remap($element['children']);
+                }
+            }
+        };
+        $remap($content['compositions']['shared']['childFlow']['elements']);
+        foreach ($content['compositions']['custom'] ?? [] as $viewport => $branch) {
+            $remap($branch['childFlow']['elements']);
+            $content['compositions']['custom'][$viewport] = $branch;
+        }
         $content['compositions']['shared'] = $this->regenerateComposition($content['compositions']['shared']);
         foreach ($content['compositions']['custom'] ?? [] as $viewport => $composition) {
             $content['compositions']['custom'][$viewport] = $this->regenerateComposition($composition);
@@ -87,6 +110,9 @@ final class WebsiteElementIdentityRegenerator
                 return $item;
             }, $element['items']);
         }
+        if (($element['type'] ?? null) === 'schedule' && isset($element['days'])) {
+            $element['days'] = $this->scheduleDays($element['days']);
+        }
         if (($element['type'] ?? null) === 'people' && is_array($element['groups'] ?? null)) {
             $element['groups'] = array_map(function (array $group): array {
                 $group['id'] = (string) Str::ulid();
@@ -101,5 +127,19 @@ final class WebsiteElementIdentityRegenerator
         }
 
         return $element;
+    }
+
+    private function scheduleDays(array $days): array
+    {
+        foreach ($days as &$day) {
+            $day['id'] = (string) Str::ulid();
+            foreach ($day['activities'] as &$activity) {
+                $activity['id'] = (string) Str::ulid();
+            }
+            unset($activity);
+        }
+        unset($day);
+
+        return $days;
     }
 }

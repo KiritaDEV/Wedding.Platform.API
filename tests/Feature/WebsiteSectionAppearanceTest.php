@@ -86,7 +86,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $appearance = ['shared' => $branch];
 
         $this->actingAs($owner)
-            ->putJson("/api/events/{$event->id}/website/sections/{$section->id}/appearance", compact('appearance'))
+            ->draftPutJson("/api/events/{$event->id}/website/sections/{$section->id}/appearance", compact('appearance'))
             ->assertOk()
             ->assertJsonPath('data.sections.1.appearance', $appearance);
 
@@ -103,7 +103,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $appearance = ['shared' => $shared, 'custom' => ['mobile' => $mobile]];
 
         $this->actingAs($owner)
-            ->putJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", compact('appearance'))
+            ->draftPutJson("/api/events/{$event->id}/website/sections/{$hero->id}/appearance", compact('appearance'))
             ->assertOk()
             ->assertJsonPath('data.sections.0.appearance.shared.animation.entrance.type', 'fade-up')
             ->assertJsonPath('data.sections.0.appearance.custom.mobile.animation.entrance.type', 'none')
@@ -123,7 +123,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $appearance = ['shared' => $shared, 'custom' => ['mobile' => $mobile]];
         $url = "/api/events/{$event->id}/website/sections/{$gallery->id}/appearance";
 
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk()
             ->assertJsonPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.type', 'fade-up')
             ->assertJsonPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.stagger', 'short')
             ->assertJsonMissingPath('data.sections.1.appearance.shared.galleryItemAnimation.entrance.speed')
@@ -132,10 +132,10 @@ class WebsiteSectionAppearanceTest extends TestCase
 
         foreach ([60, 'custom'] as $stagger) {
             $invalid = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'fade', 'stagger' => $stagger]]]];
-            $this->actingAs($owner)->putJson($url, ['appearance' => $invalid])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => $invalid])->assertUnprocessable();
         }
         $unknown = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'galleryItemAnimation' => ['entrance' => ['type' => 'fade', 'delay' => 'short']]]];
-        $this->actingAs($owner)->putJson($url, ['appearance' => $unknown])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => $unknown])->assertUnprocessable();
     }
 
     public function test_rsvp_section_and_specialized_form_animation_use_appearance_not_semantic_content(): void
@@ -149,7 +149,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         ];
 
         $this->actingAs($owner)
-            ->putJson("/api/events/{$event->id}/website/sections/{$rsvp->id}/appearance", compact('appearance'))
+            ->draftPutJson("/api/events/{$event->id}/website/sections/{$rsvp->id}/appearance", compact('appearance'))
             ->assertOk();
 
         $this->assertSame($appearance, $rsvp->refresh()->appearance);
@@ -163,20 +163,20 @@ class WebsiteSectionAppearanceTest extends TestCase
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
 
         $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => 100], 'backgroundImageOpacity' => 45]];
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk()
             ->assertJsonPath('data.sections.0.appearance.shared.height.unit', 'svh')
             ->assertJsonPath('data.sections.0.appearance.shared.height.value', 100)
             ->assertJsonPath('data.sections.0.appearance.shared.backgroundImageOpacity', 45);
 
-        $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'backgroundImageOpacity' => 100]]])
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'backgroundImageOpacity' => 100]]])
             ->assertOk()->assertJsonMissingPath('data.sections.0.appearance.shared.height')->assertJsonMissingPath('data.sections.0.appearance.shared.backgroundImageOpacity');
         foreach ([25, 100, 150] as $value) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => $value]]]])->assertOk();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => ['unit' => 'svh', 'value' => $value]]]])->assertOk();
         }
         foreach (['auto', 'screen', '75svh', ['unit' => 'vh', 'value' => 75], ['unit' => 'px', 'value' => 600], ['unit' => 'svh', 'value' => 24], ['unit' => 'svh', 'value' => 151], ['unit' => 'svh', 'value' => 75.5], ['unit' => 'svh', 'value' => 75, 'extra' => true]] as $height) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => $height]]])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'height' => $height]]])->assertUnprocessable();
         }
-        $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'presentation' => 'immersive']]])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'presentation' => 'immersive']]])->assertUnprocessable();
     }
 
     public function test_hero_content_position_round_trips_at_owner_level_and_rejects_responsive_state(): void
@@ -187,16 +187,16 @@ class WebsiteSectionAppearanceTest extends TestCase
         $branch = [...WebsiteSectionAppearance::DEFAULT, 'contentPosition' => 'center-end', 'innerSpacing' => ['top' => 'xl', 'right' => 's', 'bottom' => 'm']];
         $appearance = ['shared' => $branch];
 
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk()
             ->assertJsonPath('data.sections.0.appearance.shared.contentPosition', 'center-end');
         $this->assertSame($appearance, $hero->refresh()->appearance);
 
-        $this->actingAs($owner)->putJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'contentPosition' => 'center']]])
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'contentPosition' => 'center']]])
             ->assertOk()->assertJsonMissingPath('data.sections.0.appearance.shared.contentPosition');
-        $this->actingAs($owner)->putJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'contentPosition' => 'diagonal']])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'responsive' => ['mobile' => ['contentPosition' => 'diagonal']]]])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'innerSpacing' => ['topFox' => 'm']]])->assertUnprocessable();
-        $this->actingAs($owner)->putJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'innerSpacing' => ['top' => 'huge']]])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'contentPosition' => 'diagonal']])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'responsive' => ['mobile' => ['contentPosition' => 'diagonal']]]])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'innerSpacing' => ['topFox' => 'm']]])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => [...WebsiteSectionAppearance::DEFAULT, 'innerSpacing' => ['top' => 'huge']]])->assertUnprocessable();
     }
 
     public function test_responsive_overrides_reject_unknown_keys_and_unsupported_values(): void
@@ -212,7 +212,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             [...$base, 'responsive' => ['mobile' => ['mediaPlacement' => 'diagonal']]],
             [...$base, 'responsive' => ['mobile' => ['mediaSpacing' => ['top' => 'none']]]],
         ] as $appearance) {
-            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertUnprocessable();
         }
 
         $this->assertSame(['shared' => WebsiteSectionAppearance::DEFAULT], $hero->refresh()->appearance);
@@ -222,7 +222,7 @@ class WebsiteSectionAppearanceTest extends TestCase
     {
         [$event, $owner] = $this->eventWithOwner();
         $base = "/api/events/{$event->id}/websites/{$event->website->id}/sections";
-        $sections = $this->actingAs($owner)->postJson($base, ['type' => 'blank'])->assertCreated()->json('data.sections');
+        $sections = $this->actingAs($owner)->draftPostJson($base, ['type' => 'blank'])->assertCreated()->json('data.sections');
         $blank = collect($sections)->firstWhere('type', 'blank');
         $appearance = [
             ...WebsiteSectionAppearance::DEFAULT,
@@ -235,22 +235,22 @@ class WebsiteSectionAppearanceTest extends TestCase
         ];
         $url = "/api/events/{$event->id}/website/sections/{$blank['id']}/appearance";
         $appearance = ['shared' => $appearance];
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
         $stored = $event->website->sections()->findOrFail($blank['id'])->appearance;
         $this->assertSame($appearance, $stored);
         $reloaded = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('id', $blank['id']);
         $this->assertEquals($appearance, $reloaded['appearance']);
 
         $sparse = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine']]]];
-        $this->actingAs($owner)->putJson($url, ['appearance' => $sparse])->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, ['appearance' => $sparse])->assertOk();
         $this->assertSame($sparse, $event->website->sections()->findOrFail($blank['id'])->appearance);
 
         foreach (['headingAlignment' => 'center', 'bodyAlignment' => 'right', 'emphasis' => 'featured'] as $field => $value) {
             $invalid = $sparse;
             $invalid['shared'][$field] = $value;
-            $this->actingAs($owner)->putJson($url, ['appearance' => $invalid])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => $invalid])->assertUnprocessable();
         }
-        $this->actingAs($owner)->putJson("{$base}/{$blank['id']}/design-defaults", ['designDefaults' => ['headingFontId' => 'classic-serif']])
+        $this->actingAs($owner)->draftPutJson("{$base}/{$blank['id']}/design-defaults", ['designDefaults' => ['headingFontId' => 'classic-serif']])
             ->assertUnprocessable()->assertJsonValidationErrors('designDefaults');
 
         $model = $event->website->sections()->findOrFail($blank['id']);
@@ -277,7 +277,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             ];
             $appearance = $type === 'gallery' ? ['shared' => $branch] : $branch;
             $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
-            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+            $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
             $this->assertSame($appearance, $section->refresh()->appearance);
         }
     }
@@ -289,7 +289,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
 
         foreach (array_keys(WebsiteSectionAppearance::DEFAULT) as $field) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => [$field => WebsiteSectionAppearance::DEFAULT[$field]]])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => [$field => WebsiteSectionAppearance::DEFAULT[$field]]])->assertUnprocessable();
         }
 
         $section->appearance = [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine']]];
@@ -306,12 +306,12 @@ class WebsiteSectionAppearanceTest extends TestCase
         $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
         $appearance = ['innerSpacing' => ['top' => 'xl', 'right' => 'none', 'bottom' => 'm', 'left' => 'xs']];
 
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk()
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk()
             ->assertJsonPath('data.sections.2.appearance.innerSpacing', ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']);
         $this->assertSame(['innerSpacing' => ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']], $section->refresh()->appearance);
 
         foreach ([['top' => 'huge'], ['diagonal' => 'm']] as $innerSpacing) {
-            $this->actingAs($owner)->putJson($url, ['appearance' => compact('innerSpacing')])->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, ['appearance' => compact('innerSpacing')])->assertUnprocessable();
         }
     }
 
@@ -324,7 +324,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $shared = [...$base, 'innerSpacing' => ['top' => 'xl', 'right' => 'none', 'bottom' => 'm', 'left' => 'xs']];
         $appearance = ['shared' => $shared];
 
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
         $expected = ['shared' => [...$base, 'innerSpacing' => ['top' => 'xl', 'bottom' => 'm', 'left' => 'xs']]];
         $this->assertSame($expected, $section->refresh()->appearance);
         $serialized = collect($this->actingAs($owner)->getJson("/api/events/{$event->id}/website")->assertOk()->json('data.sections'))->firstWhere('type', 'gallery');
@@ -343,7 +343,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             ['colorId' => 'missing-frame-color'], ['inset' => 20],
         ] as $invalidFrame) {
             $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', ...$invalidFrame]]]];
-            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertUnprocessable();
         }
     }
 
@@ -365,7 +365,7 @@ class WebsiteSectionAppearanceTest extends TestCase
             'mobile' => $branch(200, 100, 150),
         ]];
         $url = "/api/events/{$event->id}/website/sections/{$hero->id}/appearance";
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
         $this->assertSame($appearance, $hero->refresh()->appearance);
     }
 
@@ -380,7 +380,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         $section = $event->website->sections()->where('type', 'gallery')->sole();
         $appearance = ['shared' => [...WebsiteSectionAppearance::DEFAULT, 'decorativeAppearance' => ['frame' => ['style' => 'fine', 'colorId' => $projectColorId]]]];
         $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
-        $this->actingAs($owner)->putJson($url, compact('appearance'))->assertOk();
+        $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertOk();
         $this->assertSame($appearance, $section->refresh()->appearance);
     }
 
@@ -400,7 +400,7 @@ class WebsiteSectionAppearanceTest extends TestCase
         ];
 
         foreach ($invalid as $appearance) {
-            $this->actingAs($owner)->putJson($url, compact('appearance'))->assertUnprocessable();
+            $this->actingAs($owner)->draftPutJson($url, compact('appearance'))->assertUnprocessable();
             $this->assertSame(['shared' => WebsiteSectionAppearance::DEFAULT], $section->refresh()->appearance);
         }
     }
@@ -414,9 +414,9 @@ class WebsiteSectionAppearanceTest extends TestCase
         $payload = ['appearance' => WebsiteSectionAppearance::DEFAULT];
         $url = "/api/events/{$event->id}/website/sections/{$section->id}/appearance";
 
-        $this->putJson($url, $payload)->assertUnauthorized();
-        $this->actingAs(User::factory()->create())->putJson($url, $payload)->assertForbidden();
-        $this->actingAs($owner)->putJson("/api/events/{$event->id}/website/sections/{$otherSection->id}/appearance", $payload)->assertNotFound();
+        $this->draftPutJson($url, $payload)->assertUnauthorized();
+        $this->actingAs(User::factory()->create())->draftPutJson($url, $payload)->assertForbidden();
+        $this->actingAs($owner)->draftPutJson("/api/events/{$event->id}/website/sections/{$otherSection->id}/appearance", $payload)->assertNotFound();
     }
 
     public function test_w9_rollout_and_rollback_reapply_preserve_existing_sections(): void

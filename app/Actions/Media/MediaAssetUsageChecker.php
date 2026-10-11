@@ -4,6 +4,7 @@ namespace App\Actions\Media;
 
 use App\Models\MediaAsset;
 use App\Models\WebsiteSection;
+use App\Website\Publishing\PublishedWebsiteMediaUsage;
 use App\Website\WebsiteSectionMediaReferenceExtractor;
 use App\Website\WebsiteSectionRegistry;
 use Illuminate\Support\Collection;
@@ -13,6 +14,7 @@ final class MediaAssetUsageChecker
     public function __construct(
         private readonly WebsiteSectionRegistry $sections,
         private readonly WebsiteSectionMediaReferenceExtractor $mediaReferences,
+        private readonly PublishedWebsiteMediaUsage $snapshots,
     ) {}
 
     public function isUsed(MediaAsset $asset): bool
@@ -63,6 +65,7 @@ final class MediaAssetUsageChecker
                 }
 
                 $usage[$resolvedAssetId][] = [
+                    'source' => 'draft',
                     'mediaId' => $extracted['mediaId'],
                     'eventId' => $section->event_id,
                     'websiteProjectId' => $section->website_project_id,
@@ -72,6 +75,13 @@ final class MediaAssetUsageChecker
                     'sectionName' => $this->sections->get($section->type)?->displayName ?? $section->type,
                     'reference' => $extracted['reference'],
                 ];
+            }
+        }
+
+        foreach ($this->snapshots->referencesForEvents($assets->pluck('event_id')->unique()->all()) as $reference) {
+            $resolvedAssetId = $assetEvents->get($reference['eventId'].':'.$reference['mediaId']);
+            if ($resolvedAssetId !== null) {
+                $usage[$resolvedAssetId][] = $reference;
             }
         }
 
@@ -86,7 +96,8 @@ final class MediaAssetUsageChecker
         $reference = $record['reference'];
 
         return implode(':', array_map(fn (mixed $value): string => (string) $value, [
-            $record['mediaId'], $record['websiteProjectId'], $record['sectionId'], $reference['type'],
+            $record['source'], $record['mediaId'], $record['websiteProjectId'], $record['sectionId'], $reference['type'],
+            $reference['appearanceScope'] ?? '',
             $reference['compositionScope'] ?? '', $reference['elementId'] ?? '', $reference['itemId'] ?? '',
             $reference['groupId'] ?? '', $reference['personId'] ?? '',
         ]));

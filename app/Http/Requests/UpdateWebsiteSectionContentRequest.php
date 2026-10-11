@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Website\Elements\ScheduleAppearance;
+use App\Website\ScheduleContent;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -23,9 +25,27 @@ class UpdateWebsiteSectionContentRequest extends FormRequest
             // Associative decoding loses the distinction between {} and [].
             // Check the original JSON before validating object-shaped element state.
             $body = json_decode($this->getContent());
+            if (($body->content ?? null) instanceof \stdClass && property_exists($body->content, 'sharedContentDefinitions')) {
+                $definitions = $body->content->sharedContentDefinitions;
+                if (! is_array($definitions)) {
+                    $validator->errors()->add('content.sharedContentDefinitions', 'Definitions must be a JSON list.');
+                } else {
+                    foreach ($definitions as $index => $definition) {
+                        if (! $definition instanceof \stdClass || ! ($definition->content ?? null) instanceof \stdClass || ! ScheduleContent::validJsonDays($definition->content->days ?? null)) {
+                            $validator->errors()->add('content.sharedContentDefinitions.'.$index, 'Definitions require object content and an entry list.');
+                        }
+                    }
+                }
+            }
             $visit = function (mixed $element, string $path) use (&$visit, $validator): void {
                 if (! $element instanceof \stdClass) {
                     return;
+                }
+                if (($element->type ?? null) === 'schedule' && property_exists($element, 'appearance') && ! ScheduleAppearance::validJson($element->appearance)) {
+                    $validator->errors()->add($path.'.appearance', 'Schedule appearance and layout settings must be JSON objects.');
+                }
+                if (($element->type ?? null) === 'schedule' && ! isset($element->contentId) && ! ScheduleContent::validJsonDays($element->days ?? null)) {
+                    $validator->errors()->add($path.'.days', 'Days and Activities require JSON lists of objects.');
                 }
                 if (($element->type ?? null) === 'divider' && property_exists($element, 'appearance') && ! $element->appearance instanceof \stdClass) {
                     $validator->errors()->add($path.'.appearance', 'Divider appearance must be a JSON object.');

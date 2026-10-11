@@ -28,7 +28,7 @@ class WebsiteSectionDesignDefaultsTest extends TestCase
         $hero = $project->sections()->where('type', 'hero')->sole();
         $url = $this->defaultsUrl($event, $project, $hero->id);
 
-        $this->actingAs($owner)->putJson($url, ['designDefaults' => ['headingColorId' => 'ink-accent']])->assertUnprocessable();
+        $this->actingAs($owner)->draftPutJson($url, ['designDefaults' => ['headingColorId' => 'ink-accent']])->assertUnprocessable();
         $this->assertNull($hero->refresh()->design_defaults);
     }
 

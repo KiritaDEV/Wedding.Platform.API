@@ -18,7 +18,7 @@ class MediaAssetResource extends JsonResource
             'height' => $this->height,
             'sizeBytes' => $this->size_bytes,
             'createdAt' => $this->created_at?->toISOString(),
-            'variants' => $this->variants->mapWithKeys(fn ($variant): array => [
+            'variants' => (object) $this->variants->mapWithKeys(fn ($variant): array => [
                 $variant->variant_key => [
                     'width' => $variant->width,
                     'height' => $variant->height,

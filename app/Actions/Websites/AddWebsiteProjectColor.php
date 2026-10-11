@@ -4,6 +4,7 @@ namespace App\Actions\Websites;
 
 use App\Models\Website;
 use App\Website\ProjectColorLibrary;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +14,11 @@ final class AddWebsiteProjectColor
     public function __construct(private readonly ProjectColorLibrary $colors) {}
 
     public function handle(Website $website, string $value): Website
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($website, fn (): Website => $this->apply($website, $value));
+    }
+
+    private function apply(Website $website, string $value): Website
     {
         return DB::transaction(function () use ($website, $value): Website {
             $locked = Website::query()->lockForUpdate()->findOrFail($website->getKey());

@@ -14,12 +14,16 @@ Route::get('/public/events/{slug}/site', [PublicEventSiteController::class, 'sho
 Route::get('/public/events/{slug}/media/{asset}/web', [PublicEventSiteController::class, 'media'])
     ->name('public.events.media.web');
 use App\Http\Controllers\WeddingRoleController;
+use App\Http\Middleware\WebsiteDraftBoundary;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/private-invitations/context', [PrivateInvitationController::class, 'context'])
     ->middleware('throttle:30,1');
 Route::post('/private-invitations/site', [PrivateInvitationController::class, 'site'])
     ->middleware('throttle:30,1');
+Route::get('/private-invitations/{token}/media/{asset}/web', [PrivateInvitationController::class, 'media'])
+    ->where('token', '[A-Za-z0-9_-]{43}')
+    ->middleware('throttle:120,1')->name('private-invitations.media.web');
 
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -66,35 +70,36 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events/{event}/media/{asset}/variants/{variant}', [MediaAssetController::class, 'variant'])
         ->name('events.media.variants.show');
 
-    Route::get('/events/{event}/website', [WebsiteDraftController::class, 'show']);
+    Route::get('/events/{event}/website', [WebsiteDraftController::class, 'show'])->middleware(WebsiteDraftBoundary::class);
     Route::post('/events/{event}/website', [WebsiteDraftController::class, 'store']);
     Route::get('/events/{event}/website-templates', [WebsiteDraftController::class, 'creationTemplates']);
-    Route::put('/events/{event}/website/design', [WebsiteDraftController::class, 'updateDesign']);
-    Route::put('/events/{event}/website/sections/order', [WebsiteDraftController::class, 'reorder']);
-    Route::post('/events/{event}/website/sections', [WebsiteDraftController::class, 'createSection']);
-    Route::delete('/events/{event}/website/sections/{section}', [WebsiteDraftController::class, 'deleteSection']);
-    Route::post('/events/{event}/website/sections/{section}/duplicate', [WebsiteDraftController::class, 'duplicateSection']);
-    Route::put('/events/{event}/website/sections/{section}/editor-name', [WebsiteDraftController::class, 'renameSection']);
-    Route::put('/events/{event}/website/sections/{section}/enabled', [WebsiteDraftController::class, 'updateSectionEnabled']);
-    Route::put('/events/{event}/website/sections/{section}/appearance', [WebsiteDraftController::class, 'updateSectionAppearance']);
-    Route::put('/events/{event}/website/sections/{section}/design-defaults', [WebsiteDraftController::class, 'updateSectionDesignDefaults']);
-    Route::put('/events/{event}/website/sections/{section}', [WebsiteDraftController::class, 'updateSection']);
+    Route::put('/events/{event}/website/design', [WebsiteDraftController::class, 'updateDesign'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/order', [WebsiteDraftController::class, 'reorder'])->middleware(WebsiteDraftBoundary::class);
+    Route::post('/events/{event}/website/sections', [WebsiteDraftController::class, 'createSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::delete('/events/{event}/website/sections/{section}', [WebsiteDraftController::class, 'deleteSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::post('/events/{event}/website/sections/{section}/duplicate', [WebsiteDraftController::class, 'duplicateSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/{section}/editor-name', [WebsiteDraftController::class, 'renameSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/{section}/enabled', [WebsiteDraftController::class, 'updateSectionEnabled'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/{section}/appearance', [WebsiteDraftController::class, 'updateSectionAppearance'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/{section}/design-defaults', [WebsiteDraftController::class, 'updateSectionDesignDefaults'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/website/sections/{section}', [WebsiteDraftController::class, 'updateSection'])->middleware(WebsiteDraftBoundary::class);
 
+    Route::patch('/events/{event}/websites/{website}/draft', [WebsiteDraftController::class, 'saveProjectDraft'])->middleware(WebsiteDraftBoundary::class);
     Route::get('/events/{event}/websites', [WebsiteDraftController::class, 'projects']);
     Route::post('/events/{event}/websites', [WebsiteDraftController::class, 'storeProject']);
     Route::post('/events/{event}/websites/{website}/publish', [WebsiteDraftController::class, 'publish']);
     Route::delete('/events/{event}/published-website', [WebsiteDraftController::class, 'unpublish']);
-    Route::get('/events/{event}/websites/{website}', [WebsiteDraftController::class, 'showProject']);
-    Route::post('/events/{event}/websites/{website}/colors', [WebsiteDraftController::class, 'addProjectColor']);
-    Route::put('/events/{event}/websites/{website}/design', [WebsiteDraftController::class, 'updateProjectDesign']);
-    Route::put('/events/{event}/websites/{website}/sections/order', [WebsiteDraftController::class, 'reorderProjectSections']);
-    Route::post('/events/{event}/websites/{website}/sections', [WebsiteDraftController::class, 'createProjectSection']);
-    Route::delete('/events/{event}/websites/{website}/sections/{section}', [WebsiteDraftController::class, 'deleteProjectSection']);
-    Route::post('/events/{event}/websites/{website}/sections/{section}/duplicate', [WebsiteDraftController::class, 'duplicateProjectSection']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}/editor-name', [WebsiteDraftController::class, 'renameProjectSection']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}/enabled', [WebsiteDraftController::class, 'updateProjectSectionEnabled']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}/appearance', [WebsiteDraftController::class, 'updateProjectSectionAppearance']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}/presentation', [WebsiteDraftController::class, 'updateProjectSectionPresentation']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}/design-defaults', [WebsiteDraftController::class, 'updateProjectSectionDesignDefaults']);
-    Route::put('/events/{event}/websites/{website}/sections/{section}', [WebsiteDraftController::class, 'updateProjectSection']);
+    Route::get('/events/{event}/websites/{website}', [WebsiteDraftController::class, 'showProject'])->middleware(WebsiteDraftBoundary::class);
+    Route::post('/events/{event}/websites/{website}/colors', [WebsiteDraftController::class, 'addProjectColor'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/design', [WebsiteDraftController::class, 'updateProjectDesign'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/order', [WebsiteDraftController::class, 'reorderProjectSections'])->middleware(WebsiteDraftBoundary::class);
+    Route::post('/events/{event}/websites/{website}/sections', [WebsiteDraftController::class, 'createProjectSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::delete('/events/{event}/websites/{website}/sections/{section}', [WebsiteDraftController::class, 'deleteProjectSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::post('/events/{event}/websites/{website}/sections/{section}/duplicate', [WebsiteDraftController::class, 'duplicateProjectSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/editor-name', [WebsiteDraftController::class, 'renameProjectSection'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/enabled', [WebsiteDraftController::class, 'updateProjectSectionEnabled'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/appearance', [WebsiteDraftController::class, 'updateProjectSectionAppearance'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/presentation', [WebsiteDraftController::class, 'updateProjectSectionPresentation'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}/design-defaults', [WebsiteDraftController::class, 'updateProjectSectionDesignDefaults'])->middleware(WebsiteDraftBoundary::class);
+    Route::put('/events/{event}/websites/{website}/sections/{section}', [WebsiteDraftController::class, 'updateProjectSection'])->middleware(WebsiteDraftBoundary::class);
 });

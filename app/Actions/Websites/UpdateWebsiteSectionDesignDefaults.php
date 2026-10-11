@@ -7,6 +7,7 @@ use App\Website\Capabilities\ContextDefaultsIntent;
 use App\Website\Capabilities\DesignContextResolver;
 use App\Website\Capabilities\ResolvedDesignContext;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
+use App\Website\Publishing\WebsitePublicationCoordinator;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
@@ -27,6 +28,11 @@ final class UpdateWebsiteSectionDesignDefaults
 
     /** @param array<string, mixed> $designDefaults */
     public function handle(WebsiteSection $section, array $designDefaults): WebsiteSection
+    {
+        return app(WebsitePublicationCoordinator::class)->forDraftMutation($section, fn (): WebsiteSection => $this->apply($section, $designDefaults));
+    }
+
+    private function apply(WebsiteSection $section, array $designDefaults): WebsiteSection
     {
         if ($section->type === 'blank') {
             throw ValidationException::withMessages(['designDefaults' => 'Blank Section Design Defaults are not supported.']);

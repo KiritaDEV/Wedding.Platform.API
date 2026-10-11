@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Media\DeleteMediaAsset;
+use App\Actions\Media\DeliverMediaVariant;
 use App\Actions\Media\ListEventMediaAssets;
 use App\Actions\Media\MediaAssetUsageChecker;
 use App\Actions\Media\UploadMediaAsset;
@@ -15,7 +16,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaAssetController extends Controller
@@ -59,11 +59,7 @@ class MediaAssetController extends Controller
         $eventModel = $this->authorizedEvent($event);
         $mediaVariant = $this->asset($eventModel, $asset)->variants()->where('variant_key', $variant)->firstOrFail();
 
-        return Storage::disk($mediaVariant->storage_disk)->response(
-            $mediaVariant->storage_path,
-            null,
-            ['Content-Type' => $mediaVariant->mime_type, 'Cache-Control' => 'private, max-age=31536000, immutable'],
-        );
+        return app(DeliverMediaVariant::class)->handle($mediaVariant);
     }
 
     private function authorizedEvent(string $event, string $ability = 'view'): Event
