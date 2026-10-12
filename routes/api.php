@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\EventCollaboratorController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MediaAssetController;
 use App\Http\Controllers\NotificationController;
@@ -43,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::post('/events', [EventController::class, 'store']);
     Route::get('/events/{event}', [EventController::class, 'show']);
+    Route::get('/events/{event}/collaborators', [EventCollaboratorController::class, 'index']);
+    Route::post('/events/{event}/collaborators', [EventCollaboratorController::class, 'store']);
+    Route::delete('/events/{event}/collaborators/{membership}', [EventCollaboratorController::class, 'destroy']);
     Route::put('/events/{event}/timing', [EventController::class, 'updateTiming']);
     Route::put('/events/{event}/rsvp-settings', [EventController::class, 'updateRsvpSettings']);
     Route::get('/time-zones', [TimeZoneController::class, 'index']);
