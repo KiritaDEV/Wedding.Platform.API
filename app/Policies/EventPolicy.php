@@ -7,6 +7,13 @@ use App\Models\User;
 
 class EventPolicy
 {
+    public function manageCollaborators(User $user, Event $event): bool
+    {
+        $owners = $event->memberships()->where('role', 'owner')->pluck('user_id');
+
+        return $owners->count() === 1 && $owners->first() === $user->id;
+    }
+
     public function view(User $user, Event $event): bool
     {
         return $user->isSuperAdmin()
