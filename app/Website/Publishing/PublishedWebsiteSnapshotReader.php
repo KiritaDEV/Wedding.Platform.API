@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Website;
 use App\Models\WebsiteSection;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
+use App\Website\Elements\GoogleMaps;
 use App\Website\Elements\ScheduleAppearance;
 use App\Website\ScheduleContent;
 use App\Website\WebsiteSchema;
@@ -118,6 +119,9 @@ final class PublishedWebsiteSnapshotReader
                         $assertScheduleShape($child);
                     }
                 } elseif (is_object($value)) {
+                    if (($value->type ?? null) === 'map' && property_exists($value, 'editorName') && property_exists($value, 'appearance') && ! GoogleMaps::validJsonAppearance($value->appearance)) {
+                        throw new InvalidPublishedWebsiteSnapshot('Map appearance requires JSON objects.');
+                    }
                     if (($value->type ?? null) === 'schedule' && property_exists($value, 'editorName') && property_exists($value, 'appearance') && ! ScheduleAppearance::validJson($value->appearance)) {
                         throw new InvalidPublishedWebsiteSnapshot('Schedule appearance requires JSON objects.');
                     }

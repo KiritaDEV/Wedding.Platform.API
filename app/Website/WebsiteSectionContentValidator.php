@@ -63,7 +63,7 @@ final class WebsiteSectionContentValidator
             foreach ($branches as $branch => $composition) {
                 $gallery = $sectionType === 'gallery';
                 $rsvp = $sectionType === 'rsvp';
-                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'divider', 'media', 'compositionGroup']);
+                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'map', 'divider', 'media', 'compositionGroup']);
                 $flow = $this->childFlows->validate($composition['childFlow'], $allowedElementTypes ?? $defaults, $sectionType !== 'blank' && $sectionType !== 'hero');
                 if ($branch === 'shared') {
                     $validated['compositions']['shared']['childFlow'] = $flow;
