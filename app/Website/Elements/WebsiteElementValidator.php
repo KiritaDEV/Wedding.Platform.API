@@ -65,7 +65,7 @@ final class WebsiteElementValidator
     private function validateAtDepth(array $element, int $depth): array
     {
         $type = $this->elementType($element);
-        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
+        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
             && is_string($element['editorName'] ?? null)) {
             $element['editorName'] = $this->normalizeEditorName($element['editorName']);
         }
@@ -117,10 +117,13 @@ final class WebsiteElementValidator
             $this->restoreCanonicalEmptyTextRuns($element);
         }
 
-        $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)
+        if ($type === WebsiteElementType::Map) {
+            GoogleMaps::assertElement($element);
+        }
+        $spacing = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? FourSidedSpacing::extractOuter($element)
             : [];
-        $animation = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)
+        $animation = in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider], true)
             ? WebsiteAnimation::extract($element)
             : [];
 
@@ -140,6 +143,18 @@ final class WebsiteElementValidator
             WebsiteElementType::People => $this->peopleElementRules(),
             WebsiteElementType::Image => $this->imageRules(),
             WebsiteElementType::Media => $this->mediaRules(),
+            WebsiteElementType::Map => [
+                'element' => ['required', 'array:id,type,editorName,isHidden,embedUrl,appearance'],
+                'element.id' => $this->idRules(),
+                'element.type' => ['required', 'in:map'],
+                'element.embedUrl' => ['sometimes', 'string'],
+                'element.appearance' => ['sometimes', 'array:shadow,width,height,alignment,cornerRadius'],
+                'element.appearance.shadow' => ['sometimes', 'filled', 'string', 'in:none,soft,medium,strong'],
+                'element.appearance.width' => ['sometimes', 'filled', 'string', 'in:small,medium,large,full'],
+                'element.appearance.height' => ['sometimes', 'in:small,medium,large'],
+                'element.appearance.alignment' => ['sometimes', 'in:start,center,end'],
+                'element.appearance.cornerRadius' => ['sometimes', 'in:none,small,medium,large'],
+            ],
             WebsiteElementType::Divider => $this->dividerRules(),
             WebsiteElementType::Quote => $this->quoteRules(),
             WebsiteElementType::Cta => $this->ctaRules($element),
@@ -149,7 +164,7 @@ final class WebsiteElementValidator
             WebsiteElementType::CompositionGroup => throw new \LogicException('Composition Groups are validated separately.'),
         };
 
-        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Media, WebsiteElementType::Divider], true)) {
+        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider], true)) {
             $rules['element.isHidden'] = ['sometimes', 'boolean'];
             $rules['element.editorName'] = ['required', 'string', 'max:80', 'not_regex:/^\s*$/u'];
         }
