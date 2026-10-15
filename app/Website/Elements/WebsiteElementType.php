@@ -20,4 +20,5 @@ enum WebsiteElementType: string
     case EventTime = 'eventTime';
     case Countdown = 'countdown';
     case Map = 'map';
+    case Swatches = 'swatches';
 }

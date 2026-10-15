@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Website\Elements\GoogleMaps;
 use App\Website\Elements\ScheduleAppearance;
+use App\Website\Elements\Swatches;
 use App\Website\ScheduleContent;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -47,6 +48,9 @@ class UpdateWebsiteSectionContentRequest extends FormRequest
                 }
                 if (($element->type ?? null) === 'schedule' && ! isset($element->contentId) && ! ScheduleContent::validJsonDays($element->days ?? null)) {
                     $validator->errors()->add($path.'.days', 'Days and Activities require JSON lists of objects.');
+                }
+                if (($element->type ?? null) === 'swatches' && ! Swatches::validJson($element)) {
+                    $validator->errors()->add($path, 'Swatches requires object settings and a list of item objects.');
                 }
                 if (($element->type ?? null) === 'map' && property_exists($element, 'appearance') && ! GoogleMaps::validJsonAppearance($element->appearance)) {
                     $validator->errors()->add($path.'.appearance', 'Map appearance settings must be JSON objects.');

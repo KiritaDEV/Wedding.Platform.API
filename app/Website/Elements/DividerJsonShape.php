@@ -11,8 +11,11 @@ final class DividerJsonShape
     public static function serializeElements(array $elements): array
     {
         return array_map(function (array $element): array {
-            if (in_array(($element['type'] ?? null), ['divider', 'map'], true) && ($element['appearance'] ?? null) === []) {
+            if (in_array(($element['type'] ?? null), ['divider', 'map', 'swatches'], true) && ($element['appearance'] ?? null) === []) {
                 $element['appearance'] = new \stdClass;
+            }
+            if (($element['type'] ?? null) === 'swatches' && is_array($element['appearance'] ?? null) && ($element['appearance']['captionTypography'] ?? null) === []) {
+                $element['appearance']['captionTypography'] = new \stdClass;
             }
             if (($element['type'] ?? null) === 'media') {
                 foreach (['presentation', 'appearance'] as $field) {

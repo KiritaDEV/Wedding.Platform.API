@@ -65,7 +65,7 @@ final class WebsiteElementValidator
     private function validateAtDepth(array $element, int $depth): array
     {
         $type = $this->elementType($element);
-        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
+        if (in_array($type, [WebsiteElementType::Text, WebsiteElementType::Date, WebsiteElementType::Accordion, WebsiteElementType::Schedule, WebsiteElementType::People, WebsiteElementType::Countdown, WebsiteElementType::Swatches, WebsiteElementType::Map, WebsiteElementType::Media, WebsiteElementType::Divider, WebsiteElementType::CompositionGroup], true)
             && is_string($element['editorName'] ?? null)) {
             $element['editorName'] = $this->normalizeEditorName($element['editorName']);
         }
@@ -106,6 +106,9 @@ final class WebsiteElementValidator
             ]);
         }
 
+        if ($type === WebsiteElementType::Swatches) {
+            return Swatches::validate($element, fn (array $typography) => $this->validateScheduleTypography($typography));
+        }
         if ($type === WebsiteElementType::Divider) {
             $this->assertDividerJsonTypes($element);
         }
@@ -143,6 +146,7 @@ final class WebsiteElementValidator
             WebsiteElementType::People => $this->peopleElementRules(),
             WebsiteElementType::Image => $this->imageRules(),
             WebsiteElementType::Media => $this->mediaRules(),
+            WebsiteElementType::Swatches => throw new \LogicException('Swatches is validated separately.'),
             WebsiteElementType::Map => [
                 'element' => ['required', 'array:id,type,editorName,isHidden,embedUrl,appearance'],
                 'element.id' => $this->idRules(),
