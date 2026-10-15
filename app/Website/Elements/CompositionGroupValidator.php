@@ -64,7 +64,7 @@ final class CompositionGroupValidator
             unset($validated['layout']['responsive']);
         }
         $validated['children'] = array_map(function (array $child) use ($validateChild): array {
-            if (! in_array(($child['type'] ?? null), ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'map', 'divider', 'media', 'compositionGroup'], true)) {
+            if (! in_array(($child['type'] ?? null), ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'swatches', 'map', 'divider', 'media', 'compositionGroup'], true)) {
                 throw ValidationException::withMessages(['element.children' => 'Groups support Text, Date, Divider, Media, and one nested Group level.']);
             }
 
@@ -85,7 +85,7 @@ final class CompositionGroupValidator
                 throw ValidationException::withMessages(['elements' => "Element IDs must be unique within a section; duplicate [{$id}] found."]);
             }
             $seen[$id] = true;
-            if (($element['type'] ?? null) === 'media') {
+            if (in_array(($element['type'] ?? null), ['media', 'swatches'], true)) {
                 foreach ($element['items'] as $item) {
                     $visit($item);
                 }
