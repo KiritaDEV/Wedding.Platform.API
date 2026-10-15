@@ -63,7 +63,7 @@ final class WebsiteSectionContentValidator
             foreach ($branches as $branch => $composition) {
                 $gallery = $sectionType === 'gallery';
                 $rsvp = $sectionType === 'rsvp';
-                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'map', 'divider', 'media', 'compositionGroup']);
+                $defaults = $gallery ? ['text', 'divider', 'compositionGroup'] : ($rsvp ? ['text', 'divider', 'media', 'compositionGroup'] : ['text', 'date', 'accordion', 'schedule', 'people', 'countdown', 'swatches', 'map', 'divider', 'media', 'compositionGroup']);
                 $flow = $this->childFlows->validate($composition['childFlow'], $allowedElementTypes ?? $defaults, $sectionType !== 'blank' && $sectionType !== 'hero');
                 if ($branch === 'shared') {
                     $validated['compositions']['shared']['childFlow'] = $flow;
@@ -101,7 +101,7 @@ final class WebsiteSectionContentValidator
             }
             $textElements = [];
             $collectText = function (array $element, string $path) use (&$collectText, &$textElements): void {
-                if (in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule'], true)) {
+                if (in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule', 'swatches'], true)) {
                     $textElements[] = [$element, $path];
                 }
                 if (($element['type'] ?? null) === 'compositionGroup') {
@@ -114,8 +114,14 @@ final class WebsiteSectionContentValidator
                 $collectText($element, "{$index}");
             }
             foreach ($textElements as [$element, $path]) {
-                if (! in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule'], true)) {
+                if (! in_array(($element['type'] ?? null), ['text', 'date', 'countdown', 'divider', 'schedule', 'swatches'], true)) {
                     continue;
+                }
+                if ($element['type'] === 'swatches') {
+                    $fontId = $element['appearance']['captionTypography']['fontFamilyId'] ?? null;
+                    if ($fontId !== null && $allowedFontIds !== null && ! in_array($fontId, $allowedFontIds, true)) {
+                        throw ValidationException::withMessages(["content.childFlow.elements.{$path}.appearance.captionTypography.fontFamilyId" => 'The selected caption font is not supported by this Template.']);
+                    }
                 }
                 if ($element['type'] === 'divider' && isset($element['appearance']['assetId']) && $templateKey !== null
                     && ! in_array($element['appearance']['assetId'], DividerCatalog::assetIdsForTemplate($templateKey), true)) {

@@ -11,6 +11,7 @@ use App\Models\WebsiteSection;
 use App\Website\Capabilities\WebsiteCapabilityResolver;
 use App\Website\Elements\GoogleMaps;
 use App\Website\Elements\ScheduleAppearance;
+use App\Website\Elements\Swatches;
 use App\Website\ScheduleContent;
 use App\Website\WebsiteSchema;
 use App\Website\WebsiteSectionMediaReferences;
@@ -119,6 +120,9 @@ final class PublishedWebsiteSnapshotReader
                         $assertScheduleShape($child);
                     }
                 } elseif (is_object($value)) {
+                    if (($value->type ?? null) === 'swatches' && property_exists($value, 'editorName') && ! Swatches::validJson($value)) {
+                        throw new InvalidPublishedWebsiteSnapshot('Swatches requires object settings and a list of item objects.');
+                    }
                     if (($value->type ?? null) === 'map' && property_exists($value, 'editorName') && property_exists($value, 'appearance') && ! GoogleMaps::validJsonAppearance($value->appearance)) {
                         throw new InvalidPublishedWebsiteSnapshot('Map appearance requires JSON objects.');
                     }

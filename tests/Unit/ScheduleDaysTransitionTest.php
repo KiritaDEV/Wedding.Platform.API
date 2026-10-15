@@ -10,7 +10,7 @@ class ScheduleDaysTransitionTest extends TestCase
     public function test_explicit_transition_preserves_ids_authored_order_and_divergent_content_without_mutation(): void
     {
         $flat = ['items' => [
-            ['id' => 'later', 'time' => '18:00', 'title' => 'Reception — duplicate', 'details' => "A\nB"],
+            ['id' => 'later', 'time' => '18:00', 'title' => 'Reception - duplicate', 'details' => "A\nB"],
             ['id' => 'earlier', 'time' => '14:30', 'title' => 'Ceremony', 'details' => 'Garden'],
         ]];
         $transition = app(ScheduleDaysTransition::class);
@@ -25,7 +25,7 @@ class ScheduleDaysTransitionTest extends TestCase
         $divergent = $flat;
         $divergent['items'][0]['title'] = 'Device-specific copy';
         $this->assertSame('Device-specific copy', $transition->convert($divergent, 'other-day')['days'][0]['activities'][0]['title']);
-        $this->assertSame('Reception — duplicate', $flat['items'][0]['title']);
+        $this->assertSame('Reception - duplicate', $flat['items'][0]['title']);
         $this->assertSame([], $transition->convert(['items' => []], 'empty')['days'][0]['activities']);
     }
 }
